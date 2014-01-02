@@ -1,0 +1,11 @@
+language: python
+python:
+  - "3.2"
+  - "3.3"
+
+# Dependencies.
+install:
+  # Only for testing.
+  - pip install nose coverage
+# Run tests.
+script: nosetests
