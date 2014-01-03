@@ -6,23 +6,38 @@ from .filesystem_common import *
 def test_none():
 	fs.clear()
 	fs.transform('.txt$', DummyTransformer)
-	eq_(fs.list(), [])
+	eq_(fs.list(), set())
+
+def test_non_matching():
+	fs.clear()
+	fs.mount('/', DummyProvider())
+	fs.transform('.zappa$', DummyTransformer)
+
+	eq_(fs.list(), { '/', '/foo.txt' })
+
+def test_non_matching2():
+	fs.clear()
+	fs.transform('.zappa$', DummyTransformer)
+	fs.mount('/', DummyProvider())
+
+	eq_(fs.list(), { '/', '/foo.txt' })
+
 
 @dummytransformsetup
 def test_transform(provider):
-	eq_(set(fs.list()), { '/foo.txt', '/foo.rot13.txt' })
+	eq_(fs.list(), { '/',  '/foo.txt', '/foo.rot13.txt' })
 
-def test_subdir():
+def test_transform_subdir():
 	fs.clear()
 	fs.mount('/var', DummyProvider())
 	fs.transform('.txt$', DummyTransformer)
 
-	eq_(set(fs.list()), { '/var/foo.txt', '/var/foo.rot13.txt' })
+	eq_(fs.list(), { '/', '/var', '/var/foo.txt', '/var/foo.rot13.txt' })
 
 @dummytransformsetup
 def test_untransform(provider):
 	fs.untransform('.txt$', DummyTransformer)
-	eq_(fs.list(), [ '/foo.txt' ])
+	eq_(fs.list(), { '/', '/foo.txt' })
 
 @raises(KeyError)
 def test_bogus_untransform():
@@ -34,13 +49,14 @@ def test_bogus_untransform():
 def test_bogus_untransform2(provider):
 	fs.untransform('.txt$', None)
 
+
 @dummysetup
 def test_consume(provider):
 	DummyTransformer.CONSUMES = True
 	fs.transform('.txt$', DummyTransformer)
 	DummyTransformer.CONSUMES = False
 
-	eq_(fs.list(), [ '/foo.rot13.txt' ])
+	eq_(fs.list(), { '/', '/foo.rot13.txt' })
 
 def test_consume2():
 	fs.clear()
@@ -49,7 +65,7 @@ def test_consume2():
 	fs.mount('/', DummyProvider())
 	DummyTransformer.CONSUMES = False
 
-	eq_(fs.list(), [ '/foo.rot13.txt' ])
+	eq_(fs.list(), { '/', '/foo.rot13.txt' })
 
 def test_absolute():
 	fs.clear()
@@ -59,11 +75,11 @@ def test_absolute():
 	fs.transform('.txt$', DummyTransformer)
 	DummyTransformer.RELATIVE = True
 
-	eq_(set(fs.list()), { '/var/foo.txt', '/foo.rot13.txt' })
+	eq_(fs.list(), { '/', '/var', '/var/foo.txt', '/foo.rot13.txt' })
+
 
 @dummytransformsetup
 def test_open_read(provider):
-	print(fs.list())
 	with fs.open('/foo.rot13.txt') as f:
 		eq_(f.read(), 'guvf vf n grfg svyr.')
 

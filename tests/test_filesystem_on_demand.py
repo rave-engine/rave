@@ -35,16 +35,12 @@ def test_error_open(ondemand):
 	finally:
 		DummyFile.ERROR = False
 
+
 @dummyondemandsetup
 def test_remove(ondemand):
-	fs.remove_on_demand('on-demand://', ondemand)
-	eq_(fs.list(), [])
+	fs.remove_on_demand(ondemand)
+	eq_(fs.list(), set())
 
 @raises(KeyError)
 def test_bogus_remove():
-	fs.remove_on_demand('', None)
-
-@raises(KeyError)
-@dummyondemandsetup
-def test_bogus_remove2(ondemand):
-	fs.remove_on_demand('on-demand://', None)
+	fs.remove_on_demand(None)

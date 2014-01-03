@@ -5,16 +5,49 @@ class DummyProvider:
     """ Simple dummy provider that only provides a single file: foo.txt """
 
     def list(self):
-        return [ '/foo.txt' ]
+        return [ '/', '/foo.txt' ]
 
     def has(self, filename):
         return filename in self.list()
+
+    def isfile(self, filename):
+        return filename == '/foo.txt'
+
+    def isdir(self, filename):
+        return filename == '/'
 
     def open(self, filename):
         if not self.has(filename):
             raise fs.FileNotFound(filename)
 
         return DummyFile(self, filename)
+
+class BuggyProvider:
+    """ A buggy provider that claims to serve a file but won't. """
+    ERROR = fs.FileNotFound
+    def __init__(self, *args):
+        self.isdir_counts = 0
+
+    def list(self):
+        return [ '/', '/bar.txt' ]
+
+    def has(self, filename):
+        return True
+
+    def isfile(self, filename):
+        raise self.ERROR(filename)
+
+    def isdir(self, filename):
+        # We know secretly that filesystem calls isdir() for every file in the FS, so wait until after
+        # the cache is built to start bugging.
+        if self.isdir_counts == 2:
+            raise self.ERROR(filename)
+        self.isdir_counts += 1
+
+        return filename == '/'
+
+    def open(self, filename):
+        raise self.ERROR(filename)
 
 class DummyFile(fs.File):
     """ Simple dummy file with no real backend and initial content of 'this is a test file.' """
@@ -70,10 +103,16 @@ class DummyTransformer:
         return not self.origfile.endswith('.rot13.txt')
 
     def list(self):
-        return [ self.file ]
+        return [ '/', self.file ]
 
     def has(self, filename):
         return filename in self.list()
+
+    def isdir(self, filename):
+        return filename == '/'
+
+    def isfile(self, filename):
+        return filename == self.file
 
     def open(self, filename):
         if not self.has(filename):
@@ -116,19 +155,43 @@ class DummyOnDemand:
     """ A dummy on demand provider that will serve on-demand:// and return a DummyFile for every file ending in .txt. """
 
     def has(self, filename):
-        return filename.endswith('.txt')
+        return filename.startswith('on-demand://') and filename.endswith('.txt')
 
     def open(self, filename):
         if not self.has(filename):
             raise fs.FileNotFound(filename)
         return DummyFile(self, filename)
 
+    def isdir(self, filename):
+        if not self.has(filename):
+            raise fs.FileNotFound(filename)
+        return False
+
+    def isfile(self, filename):
+        if not self.has(filename):
+            raise fs.FileNotFound(filename)
+        return True
+
 
 def dummysetup(f):
     """ Simple setup that provides the test function with a dummy provider. """
     @wraps(f)
     def setup():
+        DummyFile.ERROR = False
         provider = DummyProvider()
+        fs.clear()
+        fs.mount('/', provider)
+
+        f(provider=provider)
+
+    return setup
+
+def buggysetup(f):
+    """ Simple setup with a buggy provider. """
+    @wraps(f)
+    def setup():
+        BuggyProvider.ERROR = fs.FileNotFound
+        provider = BuggyProvider()
         fs.clear()
         fs.mount('/', provider)
 
@@ -140,6 +203,10 @@ def dummytransformsetup(f):
     """ Simple setup that provides the test function with a dummy provider and transformer. """
     @wraps(f)
     def setup():
+        DummyFile.ERROR = False
+        DummyTransformer.CONSUMES = False
+        DummyTransformer.RELATIVE = True
+
         provider = DummyProvider()
         fs.clear()
         fs.mount('/', provider)
@@ -155,7 +222,7 @@ def dummyondemandsetup(f):
     def setup():
         ondemand = DummyOnDemand()
         fs.clear()
-        fs.add_on_demand('on-demand://', ondemand)
+        fs.add_on_demand(ondemand)
 
         f(ondemand=ondemand)
 
