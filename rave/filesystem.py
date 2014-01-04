@@ -50,11 +50,10 @@ def _cache_add_provider(provider, root):
 	# Add root and all its parents.
 	current = root
 	while True:
+		_cache_add_directory(provider, current)
 		parent = dirname(current)
 		if parent == current:
 			break
-
-		_cache_add_directory(provider, parent)
 		current = parent
 
 	for filename in provider.list():
@@ -69,7 +68,7 @@ def _cache_add_directory(provider, directory):
 	""" Build cache entry for directory. """
 	global _files, _contents, _cache_lock
 
-	parent = normalize(dirname(directory))
+	parent = dirname(directory)
 	with _cache_lock:
 		if directory not in _files:
 			_files[directory] = []
@@ -81,6 +80,10 @@ def _cache_add_directory(provider, directory):
 			if parent not in _contents:
 				_contents[parent] = set()
 			_contents[parent].add(directory[len(parent):].strip(PATH_SEPARATOR))
+
+			# Add directory itself too to the cache.
+			if directory not in _contents:
+				_contents[directory] = set()
 
 def _cache_add_file(provider, filename):
 	""" Build cache entry for file. Will take file through any applicable transformers. """
@@ -101,7 +104,7 @@ def _cache_add_file(provider, filename):
 		if consumed:
 			break
 	else:
-		parent = normalize(dirname(filename))
+		parent = dirname(filename)
 
 		# No file consumption occurred, add file to cache.
 		with _cache_lock:
@@ -154,8 +157,8 @@ def _cache_add_transformer_for_file(provider, filename):
 	return provider.consumes()
 
 def _providers_for_file(filename):
-	""" Generate a list of providers that may be able to provide `filename`. """
-	global _files, _on_demands, _mount_points
+	""" Generate providers that may be able to provide `filename`. """
+	global _files, _mount_points
 
 	# Fill the file cache if it doesn't exist yet.
 	if not _files:
@@ -171,9 +174,16 @@ def _providers_for_file(filename):
 			yield provider, localname
 
 	# Now check on-demand providers.
+	yield from _on_demands_for_file(filename)
+
+def _on_demands_for_file(filename):
+	""" Generate on-demand providers that may be able to provide `filename`. """
+	global _on_demands
+
 	for provider in _on_demands:
 		if provider.has(filename):
 			yield provider, filename
+
 
 ## API.
 
@@ -228,7 +238,7 @@ def mount(path, provider):
 		_cache_build()
 
 def unmount(path, provider):
-	""" Remove `provider` from `path in the virtual file system. Will raise `KeyError` if the provider could not be found. """
+	""" Remove `provider` from `path` in the virtual file system. Will raise `KeyError` if the provider could not be found. """
 	global _roots, _mount_points, _register_lock
 	path = normalize(path)
 
@@ -303,7 +313,11 @@ def add_on_demand(provider):
 	`provider` is expected to be an object satisfying the following API:
 	 - has(filename): return whether this provider can open given file.
 	 - open(filename): open a file, has to raise one of the subclasses of `FileSystemError` on error, else return a subclass of `File`.
-	 """
+	 - isfile(filename): return whether the given filename represents a file or not.
+	 - isdir(filename): return whether the given filename represents a directory or not.
+	 - (optionally) listdir(subdir): returns the file listing of a given directory, has to raise an appropriate `FileSystemError` subclass
+	     on error.
+	"""
 	global _on_demands, _register_lock
 
 	with _register_lock:
@@ -325,14 +339,24 @@ def remove_on_demand(provider):
 # Listing and opening.
 
 def list(subdir=None):
-	""" Return a list all files in the virtual file system. """
+	""" Return a list all cached files in the virtual file system. """
 	global _files
 
 	# Rebuild list if we need to.
 	if not _files:
 		_cache_build()
 
-	return set(_files.keys())
+	if subdir:
+		subdir = normalize(subdir)
+		# We can't list things that aren't directories.
+		if not isdir(subdir):
+			if not exists(subdir):
+				raise FileNotFound(subdir)
+			raise NotADirectory(subdir)
+
+		return { filename[len(subdir):].rstrip(PATH_SEPARATOR) or PATH_SEPARATOR for filename in _files if filename.startswith(subdir) }
+	else:
+		return set(_files.keys())
 
 def open(filename, *args, **kwargs):
 	"""
@@ -341,7 +365,7 @@ def open(filename, *args, **kwargs):
 	"""
 	error = FileNotFound(filename)
 
-	# Check if any local provider can provide it.
+	# Check if any local provider can provide it. Don't normalize the filename.
 	for provider, filename in _providers_for_file(filename):
 		try:
 			return provider.open(filename, *args, **kwargs)
@@ -380,24 +404,45 @@ def exists(filename):
 	if normalized in _files:
 		return True
 
-	# Else, check all providers.
-	return any(provider.has(filename) for provider, filename in _providers_for_file(filename))
+	# Else, check on-demand providers.
+	return any(provider.has(filename) for provider, filename in _on_demands_for_file(filename))
 
 def listdir(directory):
-	""" Return the contents of a directory as a set. """
+	""" Return the contents of a directory as a set. Will raise NotADirectory if given a file. """
 	global _files, _contents
 
-	directory = normalize(directory)
-	if directory not in _contents:
-		if directory in _files:
-			raise NotADirectory(directory)
-		raise FileNotFound(directory)
+	normalized = normalize(directory)
+	if isdir(normalized):
+		return _contents[normalized]
+	elif isdir(directory):
+		# Return from on-demand providers, if any.
+		for provider, filename in _on_demands_for_file(directory):
+			try:
+				return set(provider.listdir(filename))
+			except AttributeError:
+				continue
+		else:
+			raise AccessDenied(directory)
 
-	return _contents[directory]
+	# Nothing found.
+	if not exists(directory):
+		raise FileNotFound(directory)
+	raise NotADirectory(directory)
 
 def isfile(filename):
 	""" Check if `filename` represents a file. """
-	for provider, filename in _providers_for_file(filename):
+	global _files, _contents
+
+	# Quick and easy test.
+	if not _files:
+		_cache_build()
+
+	normalized = normalize(filename)
+	if normalized in _files and normalized not in _contents:
+		return True
+
+	# Else, check on-demands.
+	for provider, filename in _on_demands_for_file(filename):
 		try:
 			return provider.isfile(filename)
 		except FileNotFound:
@@ -407,9 +452,17 @@ def isfile(filename):
 
 def isdir(filename):
 	""" Check if `filename` represents a directory. """
-	global _roots
+	global _files, _contents
 
-	for provider, filename in _providers_for_file(filename):
+	# Quick and easy test.
+	if not _files:
+		_cache_build()
+
+	if normalize(filename) in _contents:
+		return True
+
+	# Else, check on-demands.
+	for provider, filename in _on_demands_for_file(filename):
 		try:
 			return provider.isdir(filename)
 		except FileNotFound:
@@ -450,10 +503,10 @@ class File:
 	 - writable() (if writable, returns False by default)
 	 - seekable() (if seekable, returns False by default)
 	 - close()
-	 - read(amount=None) (if readable)
-	 - write(data) (if writable)
-	 - seek(position, relative=True) (if seekable)
-	 - tell() (if seekable)
+	 - read(amount=None) (if readable, raises FileNotReadable by default)
+	 - write(data) (if writable, raises FileNotWritable by default)
+	 - seek(position, relative=True) (if seekable, raises FileNotSeekable by default)
+	 - tell() (if seekable, raises FileNotSeekable by default)
 	"""
 
 	def close(self):

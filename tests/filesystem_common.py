@@ -172,6 +172,41 @@ class DummyOnDemand:
             raise fs.FileNotFound(filename)
         return True
 
+class DummyListOnDemand(DummyOnDemand):
+    """ An on-demand provider that lists. """
+    def has(self, filename):
+        return filename == 'on-demand://' or super().has(filename)
+
+    def isdir(self, filename):
+        if filename == 'on-demand://':
+            return True
+        return super().isdir(filename)
+
+    def listdir(self, directory):
+        if directory != 'on-demand://':
+            raise fs.FileNotFound(directory)
+        return [ 'on-demand:///z.txt' ]
+
+class BuggyListOnDemand(DummyOnDemand):
+    """
+    A buggy on-demand provider that claims it has a directory but can't list it,
+    and claims it has another file that it can't find.
+    """
+    def has(self, filename):
+        return filename == 'on-demand://' or filename == 'buggy-demand://' or super().has(filename)
+
+    def isdir(self, filename):
+        if filename == 'on-demand://':
+            return True
+        if filename == 'buggy-demand://':
+            raise fs.FileNotFound(filename)
+        return super().isdir(filename)
+
+    def isfile(self, filename):
+        if filename == 'buggy-demand://':
+            raise fs.FileNotFound(filename)
+        return super().isfile(filename)
+
 
 def dummysetup(f):
     """ Simple setup that provides the test function with a dummy provider. """
