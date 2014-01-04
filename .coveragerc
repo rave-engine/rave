@@ -1,3 +1,6 @@
+[run]
+source = rave
+
 [report]
 exclude_lines =
     raise

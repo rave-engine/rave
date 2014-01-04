@@ -5,6 +5,10 @@ python:
 # Dependencies.
 install:
   # Only for testing.
-  - pip install nose coverage
+  - pip install nose coverage coveralls
 # Run tests.
-script: nosetests
+script:
+  - nosetests
+# Run coveralls.
+after_success:
+  - coveralls
