@@ -3,6 +3,35 @@ import builtins
 import re
 import threading
 
+from rave import log
+
+
+## Errors.
+
+class FileSystemError(IOError):
+    def __init__(self, filename, message=None):
+        super().__init__(message or filename)
+        self.filename = filename
+
+class NativeError(FileSystemError):
+    def __init__(self, filename, parent):
+        super().__init__(filename, message=repr(parent))
+        self.native_error = parent
+
+class FileNotFound(FileSystemError): pass
+class AccessDenied(FileSystemError): pass
+class FileNotReadable(FileSystemError): pass
+class FileNotWritable(FileSystemError): pass
+class FileNotSeekable(FileSystemError): pass
+class FileClosed(FileSystemError): pass
+class NotAFile(FileSystemError): pass
+class NotADirectory(FileSystemError): pass
+
+
+## Internals.
+
+# Logger
+_log = log.get(__name__)
 # File system roots. A mapping of path -> [ list of providers ].
 _roots = {}
 # A reverse mapping for _roots: provider -> mount path.
@@ -22,167 +51,158 @@ _register_lock = threading.Lock()
 # Canonical path separator.
 PATH_SEPARATOR = '/'
 
-# Errors.
-class FileSystemError(Exception): pass
-class FileNotFound(FileSystemError): pass
-class AccessDenied(FileSystemError): pass
-class FileNotReadable(FileSystemError): pass
-class FileNotWritable(FileSystemError): pass
-class FileNotSeekable(FileSystemError): pass
-class FileClosed(FileSystemError): pass
-class NotAFile(FileSystemError): pass
-class NotADirectory(FileSystemError): pass
-
-## Internals.
 
 def _cache_build():
-	""" Build file list from existing roots and transformers. """
-	global _roots, _files, _contents
+    """ Build file list from existing roots and transformers. """
+    global _files, _contents
 
-	_files = {}
-	_contents = {}
-	for root, providers in _roots.items():
-		for provider in providers:
-			_cache_add_provider(provider, root)
+    _files = {}
+    _contents = {}
+    _log('Building cache...')
+
+    for root, providers in _roots.items():
+        for provider in providers:
+            _cache_add_provider(provider, root)
 
 def _cache_add_provider(provider, root):
-	""" Build cache entry for a root. """
-	# Add root and all its parents.
-	current = root
-	while True:
-		_cache_add_directory(provider, current)
-		parent = dirname(current)
-		if parent == current:
-			break
-		current = parent
+    """ Build cache entry for a root. """
+    # Add root and all its parents.
+    _cache_add_directory(provider, root)
 
-	for filename in provider.list():
-		path = normalize(join(root, filename))
+    current = dirname(root)
+    while not exists(current):
+        _cache_add_directory(None, current)
+        parent = dirname(current)
+        if parent == current:
+            break
+        current = parent
 
-		if provider.isdir(path):
-			_cache_add_directory(provider, path)
-		else:
-			_cache_add_file(provider, path)
+    for filename in provider.list():
+        path = normalize(join(root, filename))
+
+        if provider.isdir(filename):
+            _cache_add_directory(provider, path)
+        else:
+            _cache_add_file(provider, path)
 
 def _cache_add_directory(provider, directory):
-	""" Build cache entry for directory. """
-	global _files, _contents, _cache_lock
+    """ Build cache entry for directory. """
+    parent = dirname(directory)
+    with _cache_lock:
+        if directory not in _files:
+            _files[directory] = []
+        if provider and provider not in _files[directory]:
+            _files[directory].append(provider)
 
-	parent = dirname(directory)
-	with _cache_lock:
-		if directory not in _files:
-			_files[directory] = []
-		if provider not in _files[directory]:
-			_files[directory].append(provider)
+        # Add directory to parent directory content cache.
+        if parent != directory:
+            if parent not in _contents:
+                _contents[parent] = set()
+            _contents[parent].add(directory[len(parent):].strip(PATH_SEPARATOR))
 
-		# Add directory to parent directory content cache.
-		if parent != directory:
-			if parent not in _contents:
-				_contents[parent] = set()
-			_contents[parent].add(directory[len(parent):].strip(PATH_SEPARATOR))
+            # Add directory itself too to the cache.
+            if directory not in _contents:
+                _contents[directory] = set()
 
-			# Add directory itself too to the cache.
-			if directory not in _contents:
-				_contents[directory] = set()
+    if provider:
+        _log.debug('Added directory {dir} to file system. (provider: {prov})', dir=directory, prov=provider)
+    else:
+        _log.debug('Added directory {dir} to file system.', dir=directory)
 
 def _cache_add_file(provider, filename):
-	""" Build cache entry for file. Will take file through any applicable transformers. """
-	global _files, _contents, _transformers, _cache_lock
+    """ Build cache entry for file. Will take file through any applicable transformers. """
+    # Check if we have a transformer for this file.
+    for pattern, transformers in _transformers.items():
+        if not pattern.search(filename):
+            continue
 
-	# Check if we have a transformer for this file.
-	for pattern, transformers in _transformers.items():
-		if not pattern.search(filename):
-			continue
+        # Transform until we are out of transformers or consumed our input file.
+        consumed = False
+        for transformer in transformers:
+            consumed = _cache_add_transformer_for_file(transformer, filename)
+            _log.debug('Added transformer {trans} for file {file}. (consumed: {cons})', trans=transformer, file=filename, cons=consumed)
 
-		# Transform until we are out of transformers or consumed our input file.
-		consumed = False
-		for transformer in transformers:
-			consumed = _cache_add_transformer_for_file(transformer, filename)
-			if consumed:
-				break
-		# Break from the nested loop.
-		if consumed:
-			break
-	else:
-		parent = dirname(filename)
+            if consumed:
+                break
+        # Break from the nested loop.
+        if consumed:
+            break
+    else:
+        parent = dirname(filename)
 
-		# No file consumption occurred, add file to cache.
-		with _cache_lock:
-			if filename not in _files:
-				_files[filename] = []
-			if provider not in _files[filename]:
-				_files[filename].append(provider)
+        # No file consumption occurred, add file to cache.
+        with _cache_lock:
+            if filename not in _files:
+                _files[filename] = []
+            if provider not in _files[filename]:
+                _files[filename].append(provider)
 
-			# Add file to parent directory content cache.
-			if parent not in _contents:
-				_contents[parent] = set()
-			_contents[parent].add(filename[len(parent):].strip(PATH_SEPARATOR))
+            # Add file to parent directory content cache.
+            if parent not in _contents:
+                _contents[parent] = set()
+            _contents[parent].add(filename[len(parent):].strip(PATH_SEPARATOR))
+
+        _log.debug('Added file {file} to file system. (provider: {prov})', file=filename, prov=provider)
 
 def _cache_add_transformer(pattern, provider):
-	""" Add transformer to cache: process any files affected by transformer. """
-	# Find matching files for transformer. Make a copy because we might modify the list.
-	for filename in builtins.list(_files.keys()):
-		if not pattern.search(filename):
-			continue
+    """ Add transformer to cache: process any files affected by transformer. """
+    # Find matching files for transformer. Make a copy because we might modify the list.
+    for filename in builtins.list(_files.keys()):
+        if not pattern.search(filename):
+            continue
 
-		consumed = _cache_add_transformer_for_file(provider, filename)
-		# Remove consumed file.
-		if consumed:
-			with _cache_lock:
-				del _files[filename]
-				break
+        consumed = _cache_add_transformer_for_file(provider, filename)
+        # Remove consumed file.
+        if consumed:
+            with _cache_lock:
+                del _files[filename]
+                break
 
 def _cache_add_transformer_for_file(provider, filename):
-	""" Attempt to add `provider` as transformer for `filename`. Returns a tuple of (succeeded, consumed). """
-	global _mount_points
+    """ Attempt to add `provider` as transformer for `filename`. Returns a tuple of (succeeded, consumed). """
+    # Try to load file in transformer.
+    try:
+        transformer = provider(filename)
+    except:
+        return False
+    if not transformer.valid():
+        return False
 
-	# Try to load file in transformer.
-	try:
-		transformer = provider(filename)
-	except:
-		return False
-	if not transformer.valid():
-		return False
+    # It all worked, process the transformer.
+    if provider.relative():
+        mountpoint = dirname(filename)
+    else:
+        mountpoint = PATH_SEPARATOR
 
-	# It all worked, process the transformer.
-	if provider.relative():
-		mountpoint = dirname(filename)
-	else:
-		mountpoint = PATH_SEPARATOR
+    _cache_add_provider(transformer, mountpoint)
+    with _register_lock:
+        _mount_points[transformer] = mountpoint
 
-	_cache_add_provider(transformer, mountpoint)
-	with _register_lock:
-		_mount_points[transformer] = mountpoint
-
-	return provider.consumes()
+    return provider.consumes()
 
 def _providers_for_file(filename):
-	""" Generate providers that may be able to provide `filename`. """
-	global _files, _mount_points
+    """ Generate providers that may be able to provide `filename`. """
+    # Fill the file cache if it doesn't exist yet.
+    if _files is None:
+        _cache_build()
 
-	# Fill the file cache if it doesn't exist yet.
-	if not _files:
-		_cache_build()
+    # Check if any local provider can provide it.
+    normalized = normalize(filename)
+    if normalized in _files:
+        for provider in _files[normalized]:
+            # Strip mount point for provider. Transformers don't have a mount point entry but are mounted at the root.
+            prefix = _mount_points[provider]
+            localname = PATH_SEPARATOR + normalized[len(prefix):].lstrip(PATH_SEPARATOR)
+            yield provider, localname
 
-	# Check if any local provider can provide it.
-	normalized = normalize(filename)
-	if normalized in _files:
-		for provider in _files[normalized]:
-			# Strip mount point for provider. Transformers don't have a mount point entry but are mounted at the root.
-			prefix = _mount_points[provider]
-			localname = PATH_SEPARATOR + normalized[len(prefix):].lstrip(PATH_SEPARATOR)
-			yield provider, localname
-
-	# Now check on-demand providers.
-	yield from _on_demands_for_file(filename)
+    # Now check on-demand providers.
+    yield from _on_demands_for_file(filename)
 
 def _on_demands_for_file(filename):
-	""" Generate on-demand providers that may be able to provide `filename`. """
-	global _on_demands
-
-	for provider in _on_demands:
-		if provider.has(filename):
-			yield provider, filename
+    """ Generate on-demand providers that may be able to provide `filename`. """
+    for provider in _on_demands:
+        if provider.has(filename):
+            yield provider, filename
 
 
 ## API.
@@ -190,365 +210,354 @@ def _on_demands_for_file(filename):
 # Delete fucking everything.
 
 def clear():
-	""" Clear the entire file system. Removes all roots, on-demand providers and transformers. """
-	global _roots, _contents, _on_demands, _transformers, _mount_points, _files, _cache_lock, _register_lock
+    """ Clear the entire file system. Removes all roots, on-demand providers and transformers. """
+    global _roots, _contents, _on_demands, _transformers, _mount_points, _files
 
-	with _cache_lock, _register_lock:
-		_roots = {}
-		_contents = {}
-		_on_demands = []
-		_transformers = {}
-		_mount_points = {}
-		_files = None
+    _log('Clearing file system...')
+    with _cache_lock, _register_lock:
+        _roots = {}
+        _contents = {}
+        _on_demands = []
+        _transformers = {}
+        _mount_points = {}
+        _files = None
 
 # Mounting/unmounting.
 
 def mount(path, provider):
-	"""
-	Mount `provider` at `path` in the virtual file system.
+    """
+    Mount `provider` at `path` in the virtual file system.
 
-	`provider` must be an object satisfying the following API:
-	 - list(): return a list of all file names (including folders) this provider can provide.
-	 - has(filename): return whether this provider can open given file.
-	 - open(filename): open a file, has to raise one of the subclasses of `FileSystemError` on error, else return a subclass of `File`.
-	 - isfile(filename): check if the given file is a file, should raise applicable `FileSystemError` subclass if applicable,
-	     except for NotAFile/NotADirectory, or return a boolean.
-	 - isdir(filename): check if the given file is a directory, should raise applicable `FileSystemError` subclass if applicable,
-	     except for NotAFile/NotADirectory, or return a boolean.
+    `provider` must be an object satisfying the following API:
+     - list(): return a list of all file names (including folders) this provider can provide.
+     - has(filename): return whether this provider can open given file.
+     - open(filename): open a file, has to raise one of the subclasses of `FileSystemError` on error, else return a subclass of `File`.
+     - isfile(filename): check if the given file is a file, should raise applicable `FileSystemError` subclass if applicable,
+         except for NotAFile/NotADirectory, or return a boolean.
+     - isdir(filename): check if the given file is a directory, should raise applicable `FileSystemError` subclass if applicable,
+         except for NotAFile/NotADirectory, or return a boolean.
 
-	A path can be provided by different providers. Their file lists will be merged.
-	Conflicting files will be handled as such:
-	 - If the base path for the providers are the same, the first provider that has been mounted will serve it.
-	 - If the base paths differ, the provider with the most specific base path will serve it.
-	 - If an error occurs while serving the file, the next provider according to these rules will serve it.
-	"""
-	global _roots, _mount_points, _files, _register_lock
-	path = normalize(path)
+    A path can be provided by different providers. Their file lists will be merged.
+    Conflicting files will be handled as such:
+     - If the base path for the providers are the same, the first provider that has been mounted will serve it.
+     - If the base paths differ, the provider with the most specific base path will serve it.
+     - If an error occurs while serving the file, the next provider according to these rules will serve it.
+    """
+    path = normalize(path)
 
-	with _register_lock:
-		if path not in _roots:
-			_roots[path] = []
-		_roots[path].append(provider)
-		_mount_points[provider] = path
+    with _register_lock:
+        if path not in _roots:
+            _roots[path] = []
+        _roots[path].append(provider)
+        _mount_points[provider] = path
 
-	# Add to file cache.
-	if _files:
-		_cache_add_provider(provider, path)
-	else:
-		_cache_build()
+    # Add to file cache.
+    if _files is None:
+        _cache_build()
+    else:
+        _cache_add_provider(provider, path)
+
+    _log('Mounted {prov} at {path}.', prov=provider, path=path)
 
 def unmount(path, provider):
-	""" Remove `provider` from `path` in the virtual file system. Will raise `KeyError` if the provider could not be found. """
-	global _roots, _mount_points, _register_lock
-	path = normalize(path)
+    """ Remove `provider` from `path` in the virtual file system. Will raise `KeyError` if the provider could not be found. """
+    path = normalize(path)
 
-	with _register_lock:
-		try:
-			_roots[path].remove(provider)
-			del _mount_points[provider]
-		except ValueError:
-			raise KeyError(provider)
+    with _register_lock:
+        try:
+            _roots[path].remove(provider)
+            del _mount_points[provider]
+        except ValueError:
+            raise KeyError(provider)
 
-	# Rebuild cache.
-	_cache_build()
+    # Rebuild cache.
+    _cache_build()
+
+    _log('Unmounted {prov} from {path}.', prov=provider, path=path)
 
 # Transforming.
 
 def transform(pattern, provider):
-	"""
-	TRANSFORMERS! TRANSFORMERS! MORE THAN MEETS THE EYE! TRANSFORMERS!
-	Add `provider` as a transformer for files matching `pattern`.
+    """
+    TRANSFORMERS! TRANSFORMERS! MORE THAN MEETS THE EYE! TRANSFORMERS!
+    Add `provider` as a transformer for files matching `pattern`.
 
-	`provider` has to be a class satisfying the following API:
-	 - (static) consumes(): return whether the source file should be retained in the file system.
-	 - (static) relative(): return whether files exposed by this transformer should be relative to the source path or absolute.
-	 - __init__(filename): initialize object, can raise any kind of error if the file is invalid.
-	 - valid(): return whether the file is valid according to the format this transformer parses.
-	 - list(): return a list of files (including folders, if any) created by this transformer.
-	 - has(filename): return whether this provider can open given file.
-	 - open(filename): open a file, has to raise one of the subclasses of `FileSystemError` on error, else return a subclass of `File`.
-	 - isfile(filename): check if the given file is a file, should raise applicable `FileSystemError` subclass if applicable,
-	     except for NotAFile/NotADirectory, or return a boolean.
-	 - isdir(filename): check if the given file is a directory, should raise applicable `FileSystemError` subclass if applicable,
-	     except for NotAFile/NotADirectory, or return a boolean.
-	"""
-	global _transformers, _files, _register_lock
+    `provider` has to be a class satisfying the following API:
+     - (static) consumes(): return whether the source file should be retained in the file system.
+     - (static) relative(): return whether files exposed by this transformer should be relative to the source path or absolute.
+     - __init__(filename): initialize object, can raise any kind of error if the file is invalid.
+     - valid(): return whether the file is valid according to the format this transformer parses.
+     - list(): return a list of files (including folders, if any) created by this transformer.
+     - has(filename): return whether this provider can open given file.
+     - open(filename): open a file, has to raise one of the subclasses of `FileSystemError` on error, else return a subclass of `File`.
+     - isfile(filename): check if the given file is a file, should raise applicable `FileSystemError` subclass if applicable,
+         except for NotAFile/NotADirectory, or return a boolean.
+     - isdir(filename): check if the given file is a directory, should raise applicable `FileSystemError` subclass if applicable,
+         except for NotAFile/NotADirectory, or return a boolean.
+    """
+    pattern = re.compile(pattern, re.UNICODE)
+    with _register_lock:
+        if pattern not in _transformers:
+            _transformers[pattern] = []
+        _transformers[pattern].append(provider)
 
-	pattern = re.compile(pattern, re.UNICODE)
-	with _register_lock:
-		if pattern not in _transformers:
-			_transformers[pattern] = []
-		_transformers[pattern].append(provider)
-
-	# Process file cache changes.
-	if _files:
-		_cache_add_transformer(pattern, provider)
-	else:
-		_cache_build()
+    # Process file cache changes.
+    if _files is None:
+        _cache_build()
+    else:
+        _cache_add_transformer(pattern, provider)
 
 def untransform(pattern, provider):
-	"""
-	The enemy's return is certain.
-	Remove `provider` as a transformer for filenames matching `pattern`.
-	Will raise `KeyError` if the transformer could not be found.
-	"""
-	global _transformers, _register_lock
+    """
+    The enemy's return is certain.
+    Remove `provider` as a transformer for filenames matching `pattern`.
+    Will raise `KeyError` if the transformer could not be found.
+    """
+    pattern = re.compile(pattern, re.UNICODE)
+    with _register_lock:
+        try:
+            _transformers[pattern].remove(provider)
+        except ValueError:
+            raise KeyError(provider)
 
-	pattern = re.compile(pattern, re.UNICODE)
-	with _register_lock:
-		try:
-			_transformers[pattern].remove(provider)
-		except ValueError:
-			raise KeyError(provider)
-
-	# Rebuild file cache.
-	_cache_build()
+    # Rebuild file cache.
+    _cache_build()
 
 # On-demand providers.
 
 def add_on_demand(provider):
-	"""
-	Add `provider` as 'on-demand' provider for filenames matching `pattern`.
+    """
+    Add `provider` as 'on-demand' provider for filenames matching `pattern`.
 
-	`provider` is expected to be an object satisfying the following API:
-	 - has(filename): return whether this provider can open given file.
-	 - open(filename): open a file, has to raise one of the subclasses of `FileSystemError` on error, else return a subclass of `File`.
-	 - isfile(filename): return whether the given filename represents a file or not.
-	 - isdir(filename): return whether the given filename represents a directory or not.
-	 - (optionally) listdir(subdir): returns the file listing of a given directory, has to raise an appropriate `FileSystemError` subclass
-	     on error.
-	"""
-	global _on_demands, _register_lock
-
-	with _register_lock:
-		_on_demands.append(provider)
+    `provider` is expected to be an object satisfying the following API:
+     - has(filename): return whether this provider can open given file.
+     - open(filename): open a file, has to raise one of the subclasses of `FileSystemError` on error, else return a subclass of `File`.
+     - isfile(filename): return whether the given filename represents a file or not.
+     - isdir(filename): return whether the given filename represents a directory or not.
+     - (optionally) listdir(subdir): returns the file listing of a given directory, has to raise an appropriate `FileSystemError` subclass
+         on error.
+    """
+    with _register_lock:
+        _on_demands.append(provider)
 
 def remove_on_demand(provider):
-	"""
-	Remove `provider` as on-demand provider for filenames matching `pattern`.
-	Will raise a `KeyError` if the provider could not be found.
-	"""
-	global _on_demands, _register_lock
-
-	with _register_lock:
-		try:
-			_on_demands.remove(provider)
-		except ValueError:
-			raise KeyError(provider)
+    """
+    Remove `provider` as on-demand provider for filenames matching `pattern`.
+    Will raise a `KeyError` if the provider could not be found.
+    """
+    with _register_lock:
+        try:
+            _on_demands.remove(provider)
+        except ValueError:
+            raise KeyError(provider)
 
 # Listing and opening.
 
 def list(subdir=None):
-	""" Return a list all cached files in the virtual file system. """
-	global _files
+    """ Return a list all cached files in the virtual file system. """
+    # Rebuild list if we need to.
+    if _files is None:
+        _cache_build()
 
-	# Rebuild list if we need to.
-	if not _files:
-		_cache_build()
+    if subdir:
+        subdir = normalize(subdir)
+        # We can't list things that aren't directories.
+        if not isdir(subdir):
+            if not exists(subdir):
+                raise FileNotFound(subdir)
+            raise NotADirectory(subdir)
 
-	if subdir:
-		subdir = normalize(subdir)
-		# We can't list things that aren't directories.
-		if not isdir(subdir):
-			if not exists(subdir):
-				raise FileNotFound(subdir)
-			raise NotADirectory(subdir)
+        return { filename[len(subdir):].rstrip(PATH_SEPARATOR) or PATH_SEPARATOR for filename in _files if filename.startswith(subdir) }
+    else:
+        return set(_files.keys())
 
-		return { filename[len(subdir):].rstrip(PATH_SEPARATOR) or PATH_SEPARATOR for filename in _files if filename.startswith(subdir) }
-	else:
-		return set(_files.keys())
+def open(filename, _mode='r+', **kwargs):
+    """
+    Open `filename` and return a corresponding `File` object. Will raise `FileNotFound` if the file was not found.
+    Will only raise the error from the latest attempted provider if all providers raise.
+    """
+    error = None
 
-def open(filename, *args, **kwargs):
-	"""
-	Open `filename` and return a corresponding `File` object. Will raise `FileNotFound` if the file was not found.
-	Will only raise the error from the latest attempted provider if all providers raise.
-	"""
-	error = FileNotFound(filename)
+    # Check if any local provider can provide it. Don't normalize the filename, _providers_for_file will do this appropriately.
+    for provider, filename in _providers_for_file(filename):
+        try:
+            return provider.open(filename, **kwargs)
+        except FileNotFound:
+            continue
+        except FileSystemError as e:
+            error = e
 
-	# Check if any local provider can provide it. Don't normalize the filename.
-	for provider, filename in _providers_for_file(filename):
-		try:
-			return provider.open(filename, *args, **kwargs)
-		except FileNotFound:
-			continue
-		except Exception as e:
-			error = e
-
-	# No provider available for this poor file. Let the user know. :-(
-	raise error
+    # No provider available for this poor file. Let the user know. :-(
+    if error:
+        raise error
+    else:
+        raise FileNotFound(filename)
 
 # Utility functions.
 
 def dirname(path):
-	""" Return the directory part of the given path. """
-	path = path.rstrip(PATH_SEPARATOR).rsplit(PATH_SEPARATOR, 1)[0]
-	return normalize(path)
+    """ Return the directory part of the given path. """
+    path = path.rstrip(PATH_SEPARATOR).rsplit(PATH_SEPARATOR, 1)[0]
+    return normalize(path)
 
 def basename(path):
-	""" Return the filename part of the given path. """
-	return path.rstrip(PATH_SEPARATOR).rsplit(PATH_SEPARATOR, 1)[1]
+    """ Return the filename part of the given path. """
+    return path.rstrip(PATH_SEPARATOR).rsplit(PATH_SEPARATOR, 1)[1]
 
-def join(*paths):
-	""" Join path pieces by path separator. """
-	return PATH_SEPARATOR.join(paths)
-
-def exists(filename):
-	""" Check if `filename` exists in the file system. """
-	global _files
-
-	if not _files:
-		_cache_build()
-
-	# Quick and easy test.
-	normalized = normalize(filename)
-	if normalized in _files:
-		return True
-
-	# Else, check on-demand providers.
-	return any(provider.has(filename) for provider, filename in _on_demands_for_file(filename))
-
-def listdir(directory):
-	""" Return the contents of a directory as a set. Will raise NotADirectory if given a file. """
-	global _files, _contents
-
-	normalized = normalize(directory)
-	if isdir(normalized):
-		return _contents[normalized]
-	elif isdir(directory):
-		# Return from on-demand providers, if any.
-		for provider, filename in _on_demands_for_file(directory):
-			try:
-				return set(provider.listdir(filename))
-			except AttributeError:
-				continue
-		else:
-			raise AccessDenied(directory)
-
-	# Nothing found.
-	if not exists(directory):
-		raise FileNotFound(directory)
-	raise NotADirectory(directory)
-
-def isfile(filename):
-	""" Check if `filename` represents a file. """
-	global _files, _contents
-
-	# Quick and easy test.
-	if not _files:
-		_cache_build()
-
-	normalized = normalize(filename)
-	if normalized in _files and normalized not in _contents:
-		return True
-
-	# Else, check on-demands.
-	for provider, filename in _on_demands_for_file(filename):
-		try:
-			return provider.isfile(filename)
-		except FileNotFound:
-			continue
-
-	return False
-
-def isdir(filename):
-	""" Check if `filename` represents a directory. """
-	global _files, _contents
-
-	# Quick and easy test.
-	if not _files:
-		_cache_build()
-
-	if normalize(filename) in _contents:
-		return True
-
-	# Else, check on-demands.
-	for provider, filename in _on_demands_for_file(filename):
-		try:
-			return provider.isdir(filename)
-		except FileNotFound:
-			continue
-
-	return False
+def join(*paths, normalized=True):
+    """ Join path pieces by path separator. """
+    if normalized:
+        return normalize(PATH_SEPARATOR.join(paths))
+    return PATH_SEPARATOR.join(paths)
 
 def split(path):
-	""" Split path by path separator. """
-	return path.split(PATH_SEPARATOR)
+    """ Split path by path separator. """
+    return path.split(PATH_SEPARATOR)
 
 def normalize(path):
-	""" Normalize path to canonical path. """
-	# Get pieces.
-	pieces = split(path)
+    """ Normalize path to canonical path. """
+    # Get pieces.
+    pieces = split(path)
 
-	# Remove empty or redundant directories.
-	pieces = [ piece for piece in pieces if piece and piece != '.' ]
-	# Remove parent directory entries.
-	while '..' in pieces:
-		i = pieces.index('..')
-		del pieces[i]
-		# The preceding piece, too.
-		if i > 0:
-			del pieces[i - 1]
+    # Remove empty or redundant directories.
+    pieces = [ piece for piece in pieces if piece and piece != '.' ]
+    # Remove parent directory entries.
+    while '..' in pieces:
+        i = pieces.index('..')
+        del pieces[i]
+        # The preceding piece, too.
+        if i > 0:
+            del pieces[i - 1]
 
-	return PATH_SEPARATOR + join(*pieces)
+    return PATH_SEPARATOR + join(*pieces, normalized=False)
 
+def listdir(directory):
+    """ Return the contents of a directory as a set. Will raise NotADirectory if given a file. """
+    normalized = normalize(directory)
+    if isdir(normalized):
+        return _contents[normalized]
+    elif isdir(directory):
+        # Return from on-demand providers, if any.
+        for provider, filename in _on_demands_for_file(directory):
+            try:
+                return set(provider.listdir(filename))
+            except AttributeError:
+                continue
+        else:
+            raise AccessDenied(directory)
+
+    # Nothing found.
+    if not exists(directory):
+        raise FileNotFound(directory)
+    raise NotADirectory(directory)
+
+def exists(filename):
+    """ Check if `filename` exists in the file system. """
+    if _files is None:
+        _cache_build()
+
+    # Quick and easy test.
+    normalized = normalize(filename)
+    if normalized in _files:
+        return True
+
+    # Else, check on-demand providers.
+    return any(provider.has(filename) for provider, filename in _on_demands_for_file(filename))
+
+def isfile(filename):
+    """ Check if `filename` represents a file. """
+    # Quick and easy test.
+    if _files is None:
+        _cache_build()
+
+    normalized = normalize(filename)
+    if normalized in _files and normalized not in _contents:
+        return True
+
+    # Else, check on-demands.
+    for provider, filename in _on_demands_for_file(filename):
+        try:
+            return provider.isfile(filename)
+        except FileNotFound:
+            continue
+
+    return False
+
+def isdir(filename):
+    """ Check if `filename` represents a directory. """
+    # Quick and easy test.
+    if _files is None:
+        _cache_build()
+
+    if normalize(filename) in _contents:
+        return True
+
+    # Else, check on-demands.
+    for provider, filename in _on_demands_for_file(filename):
+        try:
+            return provider.isdir(filename)
+        except FileNotFound:
+            continue
+
+    return False
 
 ## Base classes.
 
 class File:
-	"""
-	An open file in the virtual file system.
-	Subclasses are expected to at least override the following:
-	 - opened()
-	 - readable() (if readable, returns False by default)
-	 - writable() (if writable, returns False by default)
-	 - seekable() (if seekable, returns False by default)
-	 - close()
-	 - read(amount=None) (if readable, raises FileNotReadable by default)
-	 - write(data) (if writable, raises FileNotWritable by default)
-	 - seek(position, relative=True) (if seekable, raises FileNotSeekable by default)
-	 - tell() (if seekable, raises FileNotSeekable by default)
-	"""
+    """
+    An open file in the virtual file system.
+    Subclasses are expected to at least override the following:
+     - opened()
+     - readable() (if readable, returns False by default)
+     - writable() (if writable, returns False by default)
+     - seekable() (if seekable, returns False by default)
+     - close()
+     - read(amount=None) (if readable, raises FileNotReadable by default)
+     - write(data) (if writable, raises FileNotWritable by default)
+     - seek(position, relative=True) (if seekable, raises FileNotSeekable by default)
+     - tell() (if seekable, raises FileNotSeekable by default)
+    """
 
-	def close(self):
-		""" Close file. Any operation on the file after calling this method will fail with `FileClosed` raised. """
-		raise NotImplementedError
+    def close(self):
+        """ Close file. Any operation on the file after calling this method will fail with `FileClosed` raised. """
+        raise NotImplementedError
 
-	def opened(self):
-		""" Return whether this file is open. """
-		raise NotImplementedError
+    def opened(self):
+        """ Return whether this file is open. """
+        raise NotImplementedError
 
-	def readable(self):
-		""" Return whether this file is readable. """
-		return False
+    def readable(self):
+        """ Return whether this file is readable. """
+        return False
 
-	def writable(self):
-		""" Return whether this file is writable. """
-		return False
+    def writable(self):
+        """ Return whether this file is writable. """
+        return False
 
-	def seekable(self):
-		""" Return whether this file is seeekable. """
-		return False
+    def seekable(self):
+        """ Return whether this file is seeekable. """
+        return False
 
-	def read(self, amount=None):
-		""" Read `amount` bytes from file. Will read full contents if `amount` is not given. """
-		raise FileNotReadable(self)
+    def read(self, amount=None):
+        """ Read `amount` bytes from file. Will read full contents if `amount` is not given. """
+        raise FileNotReadable(self)
 
-	def write(self, data):
-		""" Write `data` to file. """
-		raise FileNotWritable(self)
+    def write(self, data):
+        """ Write `data` to file. """
+        raise FileNotWritable(self)
 
-	def seek(self, position, relative=True):
-		""" Seek in file. May raise `FileNotSeekable` if this file can't be seeked in. """
-		raise FileNotSeekable(self)
+    def seek(self, position, relative=True):
+        """ Seek in file. May raise `FileNotSeekable` if this file can't be seeked in. """
+        raise FileNotSeekable(self)
 
-	def tell(self):
-		""" Tell current file position. May raise `FileNotSeekable` if this file can't be seeked in. """
-		raise FileNotSeekable(self)
+    def tell(self):
+        """ Tell current file position. May raise `FileNotSeekable` if this file can't be seeked in. """
+        raise FileNotSeekable(self)
 
-	def __enter__(self):
-		""" Enter context management environment. """
-		return self
+    def __enter__(self):
+        """ Enter context management environment. """
+        return self
 
-	def __exit__(self, exctype, excvalue, exctraceback):
-		""" Leave context management environment. """
-		self.close()
+    def __exit__(self, exctype, excvalue, exctraceback):
+        """ Leave context management environment. """
+        self.close()
