@@ -10,6 +10,7 @@ __Naming__
 - Modules: lowercase, no separation characters: `filesystem`
 - Constants: full uppercase separated by underscores: `ZIP_MAGIC`
 - Use names that are concise but descriptive in their context.
+- Prefix functions and variables internal to the module with an underscore. Do not do this for classes.
 
 __Whitespace__
 - Indent with 4 spaces per level. Do not indent empty lines.
@@ -27,6 +28,7 @@ __Miscellaneous__
   * The test cases are an exception to this.
 - Use import aliases (`import foo.bar.baz as baz`) if you feel name references are becoming too long.
 - End a file with a newline.
+- Try to section off relevant grouped parts of your code, preferably with a header like '## Internals.' or '## API.'
 
 
 Commit messages
