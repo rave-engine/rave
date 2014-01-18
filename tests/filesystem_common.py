@@ -57,7 +57,7 @@ class DummyFile(fs.File):
         self.provider = provider
         self.contents = b'this is a test file.'
         if self.ERROR:
-            raise fs.AccessDenied()
+            raise fs.AccessDenied(filename)
 
     def read(self, amount=None):
         if not self.opened():
