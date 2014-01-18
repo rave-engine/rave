@@ -1,5 +1,25 @@
 """
 Thin wrapper around Python's (atrocious) logging module.
+
+As a module, use `rave.log.get(__name__)` to get the logger for your module.
+
+`rave.log.Logger` objects have the following API:
+- inform(message, *args, **kwargs): log message on INFO level. Message will be formatted using str.format according to the arguments.
+- debug(message, *args, **kwargs): log message on DEBUG level. See `inform`.
+- warn(message, *args, **kwargs): log message on WARNING level. See `inform`.
+- err(message, *args, **kwargs): log message on ERROR level. See `inform`.
+- fatal(message, *args, **kwargs): log message on FATAL level. See `inform`.
+- exception(exception, message, *args, **kwargs): log exception. See `inform`.
+
+- hook(level, callback): hook any message from logger on given level. Callback will be called with the message level and message as arguments.
+- unhook(level, callback): remove previously installed hook.
+- file: the file the logger is logging to.
+- formatter: the Python logging.Formatter instance associated with this logger.
+
+- FORMAT (static): the default logging format.
+- DATE_FORMAT (static): the default format for the date used in the logging format.
+- FILE (static): the default logfile.
+- LEVEL (static): the level cutoff for which messages will be recorded.
 """
 import logging
 
@@ -28,7 +48,7 @@ class Logger:
     FORMAT = '{asctime} [{name}] {levelname}: {message}'
     DATE_FORMAT = None
     FILE = None
-    LEVEL = logging.WARNING
+    LEVEL = logging.INFO
 
     def __init__(self, name=None, file=None, formatter=None):
         self._file = file or self.FILE
@@ -139,10 +159,11 @@ class Logger:
         self.logger.debug(message)
         self._call_hooks(FATAL, message)
 
-    def exception(self, exception):
+    def exception(self, exception, message='', *args, **kwargs):
         """ Log exception. """
         self.logger.exception(exception)
         self._call_hooks(EXCEPTION, message)
+
 
 def get(name, file=None):
     """ Get logger by module name. """
