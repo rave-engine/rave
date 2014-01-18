@@ -6,9 +6,13 @@ python:
 install:
   # Only for testing.
   - pip install -r requirements_testing.txt
-# Run tests.
+# Main.
 script:
+  # Check if everything compiles.
+  - python -m compileall rave modules tests
+  # Run unit tests!
   - nosetests
-# Run coveralls.
+# After.
 after_success:
+  # Report coverage.
   - coveralls
