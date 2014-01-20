@@ -144,19 +144,19 @@ class Logger:
     def warn(self, message, *args, **kwargs):
         """ Log WARNING message. """
         message = message.format(*args, **kwargs)
-        self.logger.debug(message)
+        self.logger.warning(message)
         self._call_hooks(WARNING, message)
 
     def err(self, message, *args, **kwargs):
         """ Log ERROR message. """
         message = message.format(*args, **kwargs)
-        self.logger.debug(message)
+        self.logger.error(message)
         self._call_hooks(ERROR, message)
 
     def fatal(self, message, *args, **kwargs):
         """ Log FATAL message. """
         message = message.format(*args, **kwargs)
-        self.logger.debug(message)
+        self.logger.fatal(message)
         self._call_hooks(FATAL, message)
 
     def exception(self, exception, message='', *args, **kwargs):
