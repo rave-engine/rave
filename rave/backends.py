@@ -13,7 +13,9 @@ Any code that uses `register(category, backend)` has to implement the following 
 
 Code that needs access to a certain backend can then use `select(category)` to get the selected backend for the given category.
 """
+import sys
 import heapq
+from rave import log
 
 ## Constants.
 
@@ -24,6 +26,7 @@ PRIORITY_NEUTRAL = 0
 
 ## Internal variables.
 
+_log = log.get(__name__)
 _available_backends = {}
 _selected_backends = {}
 
@@ -77,6 +80,9 @@ def _select_backend(category, backend):
 
     if loaded:
         _mark_selected_backend(category, backend)
+        setattr(sys.modules[__name__], category, backend)
+    else:
+        _log.warn('Selected {cat} backend {backend} but load() failed. Skipping.', backend=backend, cat=category)
 
     return loaded
 
@@ -93,9 +99,10 @@ def register(category, backend):
     """
     priority = backend.PRIORITY
     if priority < PRIORITY_MIN or priority > PRIORITY_MAX:
-        raise ValueError('Priority for backend "{backend}" has to lie between {min} and {max}'.format(backend=backend.__name__, min=PRIORITY_MIN, max=PRIORITY_MAX))
+        raise ValueError('Priority for backend {backend} has to lie between {min} and {max}'.format(backend=backend.__name__, min=PRIORITY_MIN, max=PRIORITY_MAX))
 
     _insert_backend(category, backend)
+    _log.debug('Registered {cat} backend: {backend}', cat=category, backend=backend)
 
 def select(category):
     """
@@ -110,4 +117,5 @@ def select(category):
         else:
             return None
 
+    _log('Selected {cat} backend: {backend}', cat=category, backend=backend)
     return _selected_backend(category)
