@@ -15,6 +15,12 @@ import marshal
 from rave import filesystem, log
 
 
+## Constants.
+
+SOURCE_ENCODING = 'utf-8'
+SOURCE_FALLBACK_ENCODING = 'iso-8859-1'
+
+
 ## Internals.
 
 _installed_finders = []
@@ -29,10 +35,11 @@ class ModuleLoader(importlib.abc.InspectLoader):
     def __init__(self):
         self._modules = {}
 
-    def register(self, name, path, is_package):
+    def register(self, name, parent, path, is_package):
         """ Register module as loadable through this loader. """
         self._modules[name] = {
             'path': path,
+            'parent': parent,
             'handle': filesystem.open(path),
             'is_package': is_package,
             'source': None,
@@ -89,9 +96,9 @@ class ModuleLoader(importlib.abc.InspectLoader):
 
         # Do the manual way.
         try:
-            txt = source.decode('utf-8')
+            txt = source.decode(SOURCE_ENCODING)
         except UnicodeDecodeError:
-            txt = source.decode('iso-8859-1')
+            txt = source.decode(SOURCE_FALLBACK_ENCODING)
 
         # Windows-style newlines.
         txt = txt.replace('\r\n', '\n')
@@ -124,9 +131,13 @@ class ModuleLoader(importlib.abc.InspectLoader):
             raise ImportError('Incorrect module name for this loader.')
         info = self._modules[name]
 
-        _log('Loading module {name}...', name=name)
+        # Only log loading of top-level modules.
+        cleaned_name = name.replace(info['parent'], '').strip('.')
+        if '.' not in cleaned_name:
+            _log('Loading module {name}...', name=name)
+        else:
+            _log.debug('Loading submodule {name}...', name=name)
 
-        # Load code.
         if info['code'] is None:
             self._load_code(name)
 
@@ -258,7 +269,7 @@ class ModuleFinder(importlib.abc.MetaPathFinder):
             # Get the first one we can load.
             for path, is_package in existing:
                 try:
-                    self._loader.register(name, path, is_package)
+                    self._loader.register(name, self.package, path, is_package)
                     _log.debug('Found {pkg} in {path}. (candidates: {existing})', pkg=name, path=path, existing=[file for file, _ in existing])
                     return self._loader
                 except filesystem.FileNotFound:
