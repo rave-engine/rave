@@ -23,6 +23,8 @@ PRIORITY_MIN = -100
 PRIORITY_MAX = 100
 PRIORITY_NEUTRAL = 0
 
+CATEGORIES = [ 'graphics', 'audio', 'video', 'widgets' ]
+
 
 ## Internal variables.
 
@@ -97,6 +99,9 @@ def register(category, backend):
     - available(): check if the backend is available on the current platform.
     - load(): the backend has been selected to be loaded. Initialize it.
     """
+    if category not in CATEGORIES:
+        raise ValueError('Unknown backend category "{cat}".'.format(cat=category))
+
     priority = backend.PRIORITY
     if priority < PRIORITY_MIN or priority > PRIORITY_MAX:
         raise ValueError('Priority for backend {backend} has to lie between {min} and {max}'.format(backend=backend.__name__, min=PRIORITY_MIN, max=PRIORITY_MAX))
@@ -109,13 +114,23 @@ def select(category):
     Select a backend for the given `category`.
     Return the selected backend if it can find a suitable backend, else returns None.
     """
+    if category not in CATEGORIES:
+        raise ValueError('Unknown backend category "{cat}".'.format(cat=category))
+    _log.debug('Selecting {cat} backend...', cat=category)
+
     if not _has_selected_backend(category):
         # Iterate through sorted list and find a proper backend.
         for backend in _backends_for(category):
-            if _backend_available(backend) and _select_backend(category, backend):
-                break
+            available = _backend_available(backend)
+            _log.debug('{backend} available: {av}', backend=backend.__name__, av=available)
+
+            if available:
+                if _select_backend(category, backend):
+                    break
+                else:
+                    _log.warn('{backend} available but initialization failed. Moving on.', backend=backend.__name__)
         else:
             return None
 
-    _log('Selected {cat} backend: {backend}', cat=category, backend=backend)
+    _log('Selected {cat} backend: {backend}', cat=category, backend=backend.__name__)
     return _selected_backend(category)
