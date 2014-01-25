@@ -3,12 +3,12 @@ import builtins
 import re
 import threading
 
-from . import log
+from . import common, log
 
 
 ## Errors.
 
-class FileSystemError(IOError):
+class FileSystemError(common.raveError, IOError):
     def __init__(self, filename, message=None):
         super().__init__(message or filename)
         self.filename = filename

@@ -1,4 +1,5 @@
 # rave - a modular and extensible visual novel engine.
+from . import common
 from . import log
 from . import bootstrap, bootstrappers
 from . import filesystem
