@@ -15,7 +15,7 @@ Bootstrappers should be placed in rave/bootstrappers/ and should implement the f
 - bootstrap_game_filesystem(): bootstrap game file system and mount rave.bootstrap.GAME_MOUNT.
 """
 import importlib
-from rave import filesystem, loader, log
+from . import filesystem, loader, log
 
 ENGINE_MOUNT = '/.rave'
 ENGINE_PACKAGE = 'rave'

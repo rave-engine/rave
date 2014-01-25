@@ -2,7 +2,7 @@
 import os.path as path
 import importlib
 
-from rave import bootstrap, loader, filesystem
+from .. import bootstrap, loader, filesystem
 
 MODULES = [ 'filesystemprovider' ]
 ENGINE_BASE_PATH = path.dirname(path.dirname(path.dirname(__file__)))

@@ -3,7 +3,7 @@ import builtins
 import re
 import threading
 
-from rave import log
+from . import log
 
 
 ## Errors.

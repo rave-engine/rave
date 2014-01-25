@@ -15,7 +15,7 @@ Code that needs access to a certain backend can then use `select(category)` to g
 """
 import sys
 import heapq
-from rave import log
+from . import log
 
 ## Constants.
 

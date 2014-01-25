@@ -12,7 +12,7 @@ import importlib.machinery
 import importlib.util
 import marshal
 
-from rave import filesystem, log
+from . import filesystem, log
 
 
 ## Constants.
