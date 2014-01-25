@@ -77,14 +77,15 @@ def _select_backend(category, backend):
     """
     try:
         loaded = backend.load()
-    except:
-        loaded = False
+    except Exception as e:
+        _log.exception(e, 'Selected {cat} backend {backend} but load() threw an exception.', backend=backend.__name__, cat=category)
+        return False
 
     if loaded:
         _mark_selected_backend(category, backend)
         setattr(sys.modules[__name__], category, backend)
     else:
-        _log.warn('Selected {cat} backend {backend} but load() failed. Skipping.', backend=backend, cat=category)
+        _log.warn('Selected {cat} backend {backend} but load() failed.', backend=backend.__name__, cat=category)
 
     return loaded
 
@@ -107,7 +108,7 @@ def register(category, backend):
         raise ValueError('Priority for backend {backend} has to lie between {min} and {max}'.format(backend=backend.__name__, min=PRIORITY_MIN, max=PRIORITY_MAX))
 
     _insert_backend(category, backend)
-    _log.debug('Registered {cat} backend: {backend}', cat=category, backend=backend)
+    _log.debug('Registered {cat} backend: {backend}', cat=category, backend=backend.__name__)
 
 def select(category):
     """
