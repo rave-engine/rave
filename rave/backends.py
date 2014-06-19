@@ -11,19 +11,18 @@ Any code that uses `register(category, backend)` has to implement the following 
 - available(): a function that returns whether or not the backend is available for this platform.
 - load(): a callback called when this module has decided this backend.
 
-Code that needs access to a certain backend can then use `select(category)` to get the selected backend for the given category.
+Code that needs access to a certain backend can then use `select(category)` ensure a backend is selected for the given category,
+and from then on use `rave.backends.<category>` to access the selected backend.
 """
 import sys
 import heapq
-from . import log
+from rave import log
 
 ## Constants.
 
 PRIORITY_MIN = -100
 PRIORITY_MAX = 100
 PRIORITY_NEUTRAL = 0
-
-CATEGORIES = [ 'graphics', 'audio', 'video', 'widgets' ]
 
 
 ## Internal variables.
@@ -100,9 +99,6 @@ def register(category, backend):
     - available(): check if the backend is available on the current platform.
     - load(): the backend has been selected to be loaded. Initialize it.
     """
-    if category not in CATEGORIES:
-        raise ValueError('Unknown backend category "{cat}".'.format(cat=category))
-
     priority = backend.PRIORITY
     if priority < PRIORITY_MIN or priority > PRIORITY_MAX:
         raise ValueError('Priority for backend {backend} has to lie between {min} and {max}'.format(backend=backend.__name__, min=PRIORITY_MIN, max=PRIORITY_MAX))
@@ -115,8 +111,6 @@ def select(category):
     Select a backend for the given `category`.
     Return the selected backend if it can find a suitable backend, else returns None.
     """
-    if category not in CATEGORIES:
-        raise ValueError('Unknown backend category "{cat}".'.format(cat=category))
     _log.debug('Selecting {cat} backend...', cat=category)
 
     if not _has_selected_backend(category):
@@ -131,6 +125,7 @@ def select(category):
                 else:
                     _log.warn('{backend} available but initialization failed. Moving on.', backend=backend.__name__)
         else:
+            _log.err('No {cat} backends available.', cat=category)
             return None
 
     _log('Selected {cat} backend: {backend}', cat=category, backend=backend.__name__)
