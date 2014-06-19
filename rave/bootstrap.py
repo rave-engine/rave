@@ -15,7 +15,7 @@ Bootstrappers should be placed in rave/bootstrappers/ and should implement the f
 - bootstrap_game_filesystem(): bootstrap game file system and mount rave.bootstrap.GAME_MOUNT.
 """
 import importlib
-from . import filesystem, loader, log
+from rave import __version__, filesystem, loader, log
 
 ENGINE_MOUNT = '/.rave'
 ENGINE_PACKAGE = 'rave'
@@ -45,6 +45,8 @@ def _find_game_bootstrapper():
 
 def bootstrap_engine(bootstrapper=None):
     """ Bootstrap the engine. """
+    _log('This is rave v{ver}.', ver=__version__)
+
     _log('Installing import hooks...')
     loader.install_hook(ENGINE_PACKAGE, [ ENGINE_MOUNT ])
     loader.install_hook(MODULE_PACKAGE, [ MODULE_MOUNT ])
@@ -52,23 +54,25 @@ def bootstrap_engine(bootstrapper=None):
     if not bootstrapper:
         bootstrapper = _find_engine_bootstrapper()
 
-    _log('Bootstrapping engine using "{bs}" bootstrapper.', bs=bootstrapper)
+    _log('Bootstrapping engine using "{name}" bootstrapper.', name=bootstrapper)
     bootstrapper = importlib.import_module('rave.bootstrappers.' + bootstrapper)
 
-    # Bootstrap vital engine modules.
+    # We bootstrap vital modules first that are likely needed to bootstrap the file system.
     _log('Bootstrapping engine modules...')
     bootstrapper.bootstrap_modules()
-    # Bootstrap file system and mount vital parts.
+
     _log('Bootstrapping file system...')
     bootstrapper.bootstrap_filesystem()
 
 def bootstrap_game(bootstrapper=None, base=None):
     """ Bootstrap the game with `base` as game base. """
-    # Clear out existing game finders.
     loader.install_hook(GAME_PACKAGE, [ GAME_MOUNT ])
 
     if not bootstrapper:
         bootstrapper = _find_game_bootstrapper()
+
+    _log('Bootstrapping game using "{name}" bootstrapper.', name=bootstrapper)
     bootstrapper = importlib.import_module('rave.bootstrappers.' + bootstrapper)
 
+    _log('Bootstrapping game file system...')
     bootstrapper.bootstrap_game_filesystem(base)

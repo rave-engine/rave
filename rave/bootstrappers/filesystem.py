@@ -48,5 +48,5 @@ def bootstrap_game_filesystem(base):
     game_module_dir = path.join(base, 'modules')
 
     # Bootstrap game module mount.
-    filesystem.mount(rave.bootstrap.GAME_MOUNT, fsp.FileSystemprovider(game_dir))
-    filesystem.mount(rave.bootstrap.MODULE_MOUNT, fsp.FileSystemProvider(game_module_dir))
+    filesystem.mount(bootstrap.GAME_MOUNT, fsp.FileSystemProvider(game_dir))
+    filesystem.mount(bootstrap.MODULE_MOUNT, fsp.FileSystemProvider(game_module_dir))

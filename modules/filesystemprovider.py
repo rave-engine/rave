@@ -11,17 +11,19 @@ from functools import wraps
 
 import rave.filesystem as fs
 
-
 __name__ = 'rave.modules.filesystemprovider'
-__author__ = 'rave developers and contributors'
+__author__ = 'Shiz'
 __version__ = '0.1.0'
 __version_info__ = (0, 1, 0)
-__license__ = 'BSD'
+__license__ = '3-clause BSD'
 
+
+
+## Internal module stuff.
 
 def _is_error(self, exception, *errors):
     """ Determine if an exception belongs to one of the given named errno module errors. """
-    errors = [ getattr(errno, error, 'no') for error in errors ]
+    errors = [ getattr(errno, error, None) for error in errors ]
     return exception.errno in errors
 
 def _translate_errors(f):

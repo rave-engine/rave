@@ -53,7 +53,7 @@ class Logger:
     def __init__(self, name=None, file=None, formatter=None):
         self._file = file or self.FILE
         self._formatter = formatter or logging.Formatter(self.FORMAT, datefmt=self.DATE_FORMAT, style='{')
-        self._hooks = { FATAL: [], ERROR: [], WARNING: [], INFO: [], DEBUG: [] }
+        self._hooks = { FATAL: [], ERROR: [], WARNING: [], INFO: [], DEBUG: [], EXCEPTION: [] }
         if name:
             self._name = name
             self._refresh_logger()
