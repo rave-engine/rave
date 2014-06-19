@@ -12,7 +12,7 @@ import importlib.machinery
 import importlib.util
 import marshal
 
-from . import filesystem, log
+from rave import filesystem, log
 
 
 ## Constants.
@@ -279,9 +279,12 @@ class ModuleFinder(importlib.abc.MetaPathFinder):
         _log.debug('{pkg} not found in the VFS.', pkg=name)
         return None
 
-    def find_spec(self, name, path=None):
+    def find_spec(self, name, path, target=None):
         """ Find ModuleSpec for given module. Python 3.4+ API. """
-        loader = self.find_loader(name, path)
+        loader = self.find_module(name, path)
+        if not loader:
+            return None
+
         return importlib.util.spec_from_loader(name, loader)
 
     def __repr__(self):
