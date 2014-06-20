@@ -8,10 +8,8 @@ from os import path
 import builtins
 import errno
 from functools import wraps
-
 import rave.filesystem as fs
 
-__name__ = 'rave.modules.filesystemprovider'
 __author__ = 'Shiz'
 __version__ = '0.1.0'
 __version_info__ = (0, 1, 0)
@@ -95,7 +93,7 @@ class FileSystemProvider:
     def _from_native_path(self, filename):
         """ Translate native file system path to virtual file system path. """
         filename = path.relpath(filename, self.basepath)
-        return fs.normalize(filename.replace(os.sep, fs.PATH_SEPARATOR))
+        return filename.replace(os.sep, fs.PATH_SEPARATOR)
 
     @_translate_errors
     def _build_file_list(self):
