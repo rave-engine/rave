@@ -39,15 +39,16 @@ class NotADirectory(FileSystemError, NotADirectoryError):
 ## Internals.
 
 _log = log.get(__name__)
-# Canonical path separator.
-PATH_SEPARATOR = '/'
-# Root.
-ROOT = '/'
 
 
 ## API.
 
 class FileSystem:
+    # Canonical path separator.
+    PATH_SEPARATOR = '/'
+    # Root.
+    ROOT = '/'
+    # Unnormalized path pattern.
     BAD_PATH_PATTERN = re.compile(r'{0}\.*{0}'.format(PATH_SEPARATOR))
 
     def __init__(self):
@@ -78,8 +79,8 @@ class FileSystem:
         _log('Building cache...')
 
         with self._lock:
-            self._file_cache = { ROOT: set() }
-            self._listing_cache = { ROOT: set() }
+            self._file_cache = { self.ROOT: set() }
+            self._listing_cache = { self.ROOT: set() }
 
             for root, providers in self._roots.items():
                 for provider in providers:
@@ -156,7 +157,7 @@ class FileSystem:
             if provider and provider not in self._file_cache[path]:
                 self._file_cache[path].append((provider, root))
 
-            if path != ROOT:
+            if path != self.ROOT:
                 parent = self.dirname(path)
                 if not self.exists(parent):
                     self._cache_directory(None, None, parent)
@@ -188,7 +189,7 @@ class FileSystem:
         if instance.relative():
             parentdir = self.dirname(path)
         else:
-            parentdir = ROOT
+            parentdir = self.ROOT
 
         # Mount as provider.
         self._cache_add_provider(instance, parentdir)
@@ -235,12 +236,14 @@ class FileSystem:
         else:
             return set(self._file_cache)
 
-    def listdir(self, subdir=ROOT):
+    def listdir(self, subdir=None):
         """ List all files and directories in the root file system, or `subdir` is given. """
         if self._file_cache is None:
             self._build_cache()
 
-        if subdir != ROOT:
+        if subdir is None:
+            subdir = self.ROOT
+        else:
             subdir = self.normalize(subdir)
             if not self.isdir(subdir):
                 if not self.exists(subdir):
@@ -257,7 +260,7 @@ class FileSystem:
         `provider` must be an object satisfying the following API:
          - list(): return a list of all file names (including folders) this provider can provide.
          - has(filename): return whether this provider can open given file.
-         - open(filename): open a file, has to raise one of the subclasses of `FileSystemError` on error, else return a subclass of `File`.
+         - open(fs, filename, **kwargs): open a file, has to raise one of the subclasses of `FileSystemError` on error, else return a subclass of `File`.
          - isfile(filename): check if the given file is a file, should raise applicable `FileSystemError` subclass if applicable,
              except for NotAFile/NotADirectory, or return a boolean.
          - isdir(filename): check if the given file is a directory, should raise applicable `FileSystemError` subclass if applicable,
@@ -365,36 +368,37 @@ class FileSystem:
     def dirname(self, path):
         """ Return the directory part of the given `path`. """
         path = self.normalize(path)
-        return path.rsplit(PATH_SEPARATOR, 1)[0] or ROOT
+        return path.rsplit(self.PATH_SEPARATOR, 1)[0] or self.ROOT
 
     def basename(self, path):
         """ Return the filename part of the given `path`. """
-        if path == ROOT:
+        if path == self.ROOT:
             return None
         path = self.normalize(path)
-        return path.rsplit(PATH_SEPARATOR, 1)[1]
+        return path.rsplit(self.PATH_SEPARATOR, 1)[1]
 
     def join(self, *paths, normalized=True):
         """ Join path components into a file system path. Optionally normalize the result. """
         if normalized:
-            return self.normalize(PATH_SEPARATOR.join(paths))
-        return PATH_SEPARATOR.join(paths)
+            return self.normalize(self.PATH_SEPARATOR.join(paths))
+        return self.PATH_SEPARATOR.join(paths)
 
     def split(self, path, *args, **kwargs):
         """ Split path by path separator. """
-        return path.split(PATH_SEPARATOR, *args, **kwargs)
+        return path.split(self.PATH_SEPARATOR, *args, **kwargs)
 
     def normalize(self, path):
         """ Normalize path to canonical path. """
         # Quick check to see if we need to normalize at all.
-        if path.startswith(ROOT) and not self.BAD_PATH_PATTERN.search(path):
-            if path.endswith(PATH_SEPARATOR):
-                return path[:-len(PATH_SEPARATOR)]
+        if path.startswith(self.ROOT) and not self.BAD_PATH_PATTERN.search(path):
+            if path.endswith(self.PATH_SEPARATOR):
+                return path[:-len(self.PATH_SEPARATOR)]
             return path
 
         # Remove root.
-        if path.startswith(ROOT):
-            path = path[len(ROOT):]
+        if path.startswith(self.ROOT):
+            path = path[len(self.ROOT):]
+
         # Split path into directory pieces and remove empty or redundant directories.
         pieces = [ piece for piece in self.split(path) if piece and piece != '.' ]
         # Remove parent directory entries.
@@ -405,7 +409,7 @@ class FileSystem:
             if i > 0:
                 del pieces[i - 1]
 
-        return ROOT + self.join(*pieces, normalized=False)
+        return self.ROOT + self.join(*pieces, normalized=False)
 
 
 class File:
