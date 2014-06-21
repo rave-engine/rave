@@ -50,7 +50,8 @@ def bootstrap_engine(bootstrapper=None):
         bootstrapper = _find_engine_bootstrapper()
 
     _log('Installing import hooks...')
-    loader.install_hook(ENGINE_PACKAGE, [ ENGINE_MOUNT ])
+    loader.patch_python()
+    loader.install_hook(ENGINE_PACKAGE, [ ENGINE_MOUNT ], local=False)
     loader.install_hook(MODULE_PACKAGE, [ MODULE_MOUNT ])
     loader.install_hook(GAME_PACKAGE, [ GAME_MOUNT ])
 

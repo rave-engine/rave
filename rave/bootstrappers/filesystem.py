@@ -20,7 +20,7 @@ def bootstrap_modules():
     # Bootstrap modules.
     for module in MODULES:
         name = bootstrap.MODULE_PACKAGE + '.' + module
-        __import__(name)
+        importlib.import_module(name)
 
     # Reset import path.
     module_package.__path__ = []

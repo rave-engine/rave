@@ -6,10 +6,12 @@ These hooks will themselves hook Python's import code to search certain given pa
 """
 import os
 import sys
+import builtins
 import imp
 import importlib.abc
 import importlib.machinery
 import importlib.util
+import threading
 import marshal
 
 from rave import log, filesystem, game
@@ -25,7 +27,9 @@ SOURCE_FALLBACK_ENCODING = 'iso-8859-1'
 
 _installed_finders = []
 _log = log.get(__name__)
-_current_fs = None
+_import_lock = threading.RLock()
+_local_cache = {}
+_builtin_import__ = None
 
 
 ## Loader classes.
@@ -168,7 +172,7 @@ class ModuleLoader(importlib.abc.InspectLoader):
 
         if self._modules[name]['code'] is None:
             self._load_code(name)
-        return self._mdules[name]['code']
+        return self._modules[name]['code']
 
     def source_to_code(self, source, path):
         """ Compile source code to code. Python 3.4+ API. """
@@ -237,9 +241,10 @@ class ModuleFinder(importlib.abc.MetaPathFinder):
     _loaders = {}
     _package_loader = EmptyPackageLoader()
 
-    def __init__(self, search_paths, package):
+    def __init__(self, search_paths, package, local=True):
         self.search_paths = search_paths
         self.package = package
+        self.local = local
         self._package_loader.register(package)
 
     def find_module(self, name, path=None):
@@ -300,14 +305,51 @@ class ModuleFinder(importlib.abc.MetaPathFinder):
         return '<rave.loader.ModuleFinder ({})>'.format(self.package)
 
 
-## API
+## Python patching.
 
-def install_hook(package, paths):
+def __rave_import__(module, globals=None, locals=None, fromlist=(), level=0):
+    current = game.current()
+
+    with _import_lock:
+        # Local modules are loaded on a per-game basis.
+        local = False
+        for finder in _installed_finders:
+            if finder.local and module.startswith(finder.package + '.'):
+                local = True
+                _local_cache.setdefault(current, {})
+                break
+
+        # Got a cached local module?
+        if local and (module, level) in _local_cache[current]:
+            return _local_cache[current][module, level]
+
+        res = _builtin__import__(module, globals, locals, fromlist, level)
+        if local:
+            # Cache module.
+            _local_cache[current][module, level] = res
+            del sys.modules[module]
+
+    return res
+
+def patch_python():
+    global _builtin__import__
+    _builtin__import__ = builtins.__import__
+    builtins.__import__ = __rave_import__
+
+def restore_python():
+    global _builtin__import__
+    builtins.__import__ = _builtin__import__
+    _builtin__import__ = None
+
+
+## API.
+
+def install_hook(package, paths, local=True):
     """
     Register an import hook for the virtual file system. Returns an identifier that can be passed to `remove_hook`.
     `package` gives the base package this hook should apply to, `paths` the search paths in the VFS the hook should search in.
     """
-    finder = ModuleFinder(paths, package)
+    finder = ModuleFinder(paths, package, local)
     sys.meta_path.insert(0, finder)
     _installed_finders.append(finder)
 
