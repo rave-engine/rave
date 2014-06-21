@@ -42,6 +42,7 @@ Seperate the distinct changes you make into seperate commits. Don't have a singl
 Prefix the first line in your commit message with the subsystem the commit applies to. Valid subsystems are:
   * rave: the engine core.
   * modules/*module*: an engine module.
+  * common: common asset files.
   * build: the build and test system.
   * tests: unit or integration tests.
   * misc: anything that doesn't fit into the above categories.
