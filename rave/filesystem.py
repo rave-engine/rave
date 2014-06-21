@@ -211,11 +211,11 @@ class FileSystem:
         if self._file_cache is None:
             self._build_cache()
 
-        if file not in self._file_cache:
-            raise FileNotFound(file)
+        if path not in self._file_cache:
+            raise FileNotFound(path)
 
-        for provider, mountpoint in reversed(self._file_cache[file]):
-            localfile = file[len(mountpoint):]
+        for provider, mountpoint in reversed(self._file_cache[path]):
+            localfile = path[len(mountpoint):]
             yield provider, localfile
 
     def list(self, subdir=None):
