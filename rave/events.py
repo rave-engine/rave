@@ -17,8 +17,9 @@ class EventBus:
         self.handlers[event].remove(handler)
 
     def emit(self, event, *args, **kwargs):
-        if event in self.handlers:
-            for handler in self.handlers[event]:
+        handlers = self.handlers.get(event)
+        if handlers:
+            for handler in handlers:
                 self._invoke_handler(handler, event, args, kwargs)
 
     def _invoke_handler(self, handler, event, args, kwargs):
