@@ -79,7 +79,7 @@ class FileSystem:
         _log('Building cache...')
 
         with self._lock:
-            self._file_cache = { self.ROOT: set() }
+            self._file_cache = { self.ROOT: [] }
             self._listing_cache = { self.ROOT: set() }
 
             for root, providers in self._roots.items():
