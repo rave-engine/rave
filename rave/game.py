@@ -4,6 +4,7 @@ rave game module.
 This contains the code that ties everything together to run a single game.
 """
 import threading
+from . import filesystem
 
 
 ## Internal.
@@ -33,3 +34,15 @@ def set_current(game):
             del _current_games[id]
         else:
             _current_games[id] = game
+
+def clear_current():
+    """ Clear the current game for whatever parallel mechanism is used. """
+    return set_current(None)
+
+
+class Game:
+    """ A game session in rave. """
+    def __init__(self, name, basedir):
+        self.name = name
+        self.basedir = basedir
+        self.fs = filesystem.FileSystem()

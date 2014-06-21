@@ -12,7 +12,7 @@ import importlib.machinery
 import importlib.util
 import marshal
 
-from rave import filesystem, log
+from rave import log, filesystem, game
 
 
 ## Constants.
@@ -25,22 +25,24 @@ SOURCE_FALLBACK_ENCODING = 'iso-8859-1'
 
 _installed_finders = []
 _log = log.get(__name__)
+_current_fs = None
 
 
 ## Loader classes.
 
 class ModuleLoader(importlib.abc.InspectLoader):
-    """ A loader that loads modules from virtual file system. """
+    """ A loader that loads modules from a virtual file system. """
 
-    def __init__(self):
+    def __init__(self, filesystem):
         self._modules = {}
+        self._filesystem = filesystem
 
     def register(self, name, parent, path, is_package):
         """ Register module as loadable through this loader. """
         self._modules[name] = {
             'path': path,
             'parent': parent,
-            'handle': filesystem.open(path),
+            'handle': self._filesystem.open(path),
             'is_package': is_package,
             'source': None,
             'code': None
@@ -232,7 +234,7 @@ class EmptyPackageLoader(importlib.abc.InspectLoader):
 
 class ModuleFinder(importlib.abc.MetaPathFinder):
     """ A module that attempts to find modules in the virtual file system and pass them to relevant loaders. """
-    _loader = ModuleLoader()
+    _loaders = {}
     _package_loader = EmptyPackageLoader()
 
     def __init__(self, search_paths, package):
@@ -250,28 +252,35 @@ class ModuleFinder(importlib.abc.MetaPathFinder):
         if name == self.package:
             return self._package_loader
 
+        # Do we have a file system to load from?
+        current = game.current()
+        if not current:
+            return None
+        if current not in self._loaders:
+            self._loaders[current] = ModuleLoader(current.fs)
+
         # Search module path in the virtual file system.
-        relpath = name.replace(self.package + '.', '').replace('.', filesystem.PATH_SEPARATOR)
-        _log.debug('Got request to find {pkg} in the VFS.', pkg=name)
+        relpath = name.replace(self.package + '.', '').replace('.', current.fs.PATH_SEPARATOR)
+        _log.debug('Attempting to load {pkg} from file system...', pkg=name)
 
         for searchpath in self.search_paths:
-            basepath = filesystem.join(searchpath, relpath)
+            basepath = current.fs.join(searchpath, relpath)
             existing = []
             extensions = importlib.machinery.SOURCE_SUFFIXES + importlib.machinery.BYTECODE_SUFFIXES
 
             # Attempt single-file modules first.
             modpaths = [ basepath + ext for ext in extensions ]
-            existing.extend((path, False) for path in modpaths if filesystem.exists(path) and filesystem.isfile(path))
+            existing.extend((path, False) for path in modpaths if current.fs.isfile(path))
             # Attempt packages.
-            packagepaths = [ filesystem.join(basepath, '__init__' + ext) for ext in extensions ]
-            existing.extend((path, True) for path in packagepaths if filesystem.exists(path) and filesystem.isfile(path))
+            packagepaths = [ current.fs.join(basepath, '__init__' + ext) for ext in extensions ]
+            existing.extend((path, True) for path in packagepaths if current.fs.isfile(path))
 
             # Get the first one we can load.
             for path, is_package in existing:
                 try:
-                    self._loader.register(name, self.package, path, is_package)
+                    self._loaders[current].register(name, self.package, path, is_package)
                     _log.debug('Found {pkg} in {path}. (candidates: {existing})', pkg=name, path=path, existing=[file for file, _ in existing])
-                    return self._loader
+                    return self._loaders[current]
                 except filesystem.FileNotFound:
                     continue
 

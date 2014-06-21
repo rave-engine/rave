@@ -15,7 +15,7 @@ Bootstrappers should be placed in rave/bootstrappers/ and should implement the f
 - bootstrap_game_filesystem(): bootstrap game file system and mount rave.bootstrap.GAME_MOUNT.
 """
 import importlib
-from rave import __version__, filesystem, loader, log
+from rave import __version__, filesystem, loader, log, game
 
 ENGINE_MOUNT = '/.rave'
 ENGINE_PACKAGE = 'rave'
@@ -46,13 +46,13 @@ def _find_game_bootstrapper():
 def bootstrap_engine(bootstrapper=None):
     """ Bootstrap the engine. """
     _log('This is rave v{ver}.', ver=__version__)
+    if not bootstrapper:
+        bootstrapper = _find_engine_bootstrapper()
 
     _log('Installing import hooks...')
     loader.install_hook(ENGINE_PACKAGE, [ ENGINE_MOUNT ])
     loader.install_hook(MODULE_PACKAGE, [ MODULE_MOUNT ])
-
-    if not bootstrapper:
-        bootstrapper = _find_engine_bootstrapper()
+    loader.install_hook(GAME_PACKAGE, [ GAME_MOUNT ])
 
     _log('Bootstrapping engine using "{name}" bootstrapper.', name=bootstrapper)
     bootstrapper = importlib.import_module('rave.bootstrappers.' + bootstrapper)
@@ -61,12 +61,9 @@ def bootstrap_engine(bootstrapper=None):
     _log('Bootstrapping engine modules...')
     bootstrapper.bootstrap_modules()
 
-    _log('Bootstrapping file system...')
-    bootstrapper.bootstrap_filesystem()
-
 def bootstrap_game(bootstrapper=None, base=None):
     """ Bootstrap the game with `base` as game base. """
-    loader.install_hook(GAME_PACKAGE, [ GAME_MOUNT ])
+    new_game = game.Game('TestGame', base)
 
     if not bootstrapper:
         bootstrapper = _find_game_bootstrapper()
@@ -74,5 +71,10 @@ def bootstrap_game(bootstrapper=None, base=None):
     _log('Bootstrapping game using "{name}" bootstrapper.', name=bootstrapper)
     bootstrapper = importlib.import_module('rave.bootstrappers.' + bootstrapper)
 
+    game.set_current(new_game)
     _log('Bootstrapping game file system...')
-    bootstrapper.bootstrap_game_filesystem(base)
+    bootstrapper.bootstrap_filesystem(new_game.fs)
+    bootstrapper.bootstrap_game_filesystem(new_game.fs, base)
+    game.clear_current()
+
+    return new_game

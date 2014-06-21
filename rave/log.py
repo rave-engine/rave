@@ -22,7 +22,6 @@ As a module, use `rave.log.get(__name__)` to get the logger for your module.
 - LEVEL (static): the level cutoff for which messages will be recorded.
 """
 import logging
-from . import game
 
 
 ## Internals.
@@ -32,7 +31,13 @@ _loggers = {}
 class LogFilter(logging.Filter):
     """ Filter that adds current game information to every message. """
     def filter(self, record):
-        record.game = game.current() or '<engine>'
+        from . import game
+
+        current = game.current()
+        if current:
+            record.game = current.name
+        else:
+            record.game = '<engine>'
         return True
 
 
