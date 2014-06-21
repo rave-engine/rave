@@ -80,7 +80,7 @@ class FileSystemProvider:
 
     def __init__(self, filesystem, basepath):
         self.filesystem = filesystem
-        self.basepath = basepath
+        self.basepath = path.abspath(basepath)
         self._file_list = None
 
         if not path.exists(self.basepath):
