@@ -17,8 +17,6 @@ def deprecated(replacement=None):
         replacement = replacement.__qualname__
 
     def inner(f):
-        nonlocal replacement
-
         # Format message.
         message = '{f} is deprecated and may be removed in future releases.'.format(f=f.__qualname__)
         if replacement:
