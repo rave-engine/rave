@@ -4,12 +4,10 @@ rave game module.
 This contains the code that ties everything together to run a single game.
 """
 import threading
-from . import log
 
 
 ## Internal.
 
-_log = log.get(__name__)
 _lock = threading.Lock()
 _current_games = {}
 

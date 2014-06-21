@@ -22,22 +22,29 @@ As a module, use `rave.log.get(__name__)` to get the logger for your module.
 - LEVEL (static): the level cutoff for which messages will be recorded.
 """
 import logging
+from . import game
 
 
 ## Internals.
 
 _loggers = {}
 
+class LogFilter(logging.Filter):
+    """ Filter that adds current game information to every message. """
+    def filter(self, record):
+        record.game = game.current() or '<engine>'
+        return True
 
-## API
+
+## API.
 
 # Log levels.
-EXCEPTION = logging.FATAL + 10
-FATAL = logging.FATAL
-ERROR = logging.ERROR
-WARNING = logging.WARNING
-INFO = logging.INFO
-DEBUG = logging.DEBUG
+EXCEPTION = 0x1
+FATAL = 0x2
+ERROR = 0x4
+WARNING = 0x8
+INFO = 0x10
+DEBUG = 0x20
 
 
 class Logger:
@@ -45,15 +52,18 @@ class Logger:
     Thin wrapper around Python's rather atrocious logging module in order to make it more bearable.
     Formats messages automatically according to advanced string formatting, handles logger name and logfile changes painlessly.
     """
-    FORMAT = '{asctime} [{name}] {levelname}: {message}'
+    FORMAT = '{asctime} [{game}:{name}] {levelname}: {message}'
     DATE_FORMAT = None
     FILE = None
-    LEVEL = logging.INFO
+    LEVEL = INFO | WARNING | ERROR | FATAL | EXCEPTION
 
-    def __init__(self, name=None, file=None, formatter=None):
+    def __init__(self, name=None, file=None, level=None, filter=None, formatter=None):
         self._file = file or self.FILE
+        self._filter = filter or LogFilter()
         self._formatter = formatter or logging.Formatter(self.FORMAT, datefmt=self.DATE_FORMAT, style='{')
         self._hooks = { FATAL: [], ERROR: [], WARNING: [], INFO: [], DEBUG: [], EXCEPTION: [] }
+        self._level = level or self.LEVEL
+
         if name:
             self._name = name
             self._refresh_logger()
@@ -65,11 +75,12 @@ class Logger:
 
     def _setup_logger(self):
         """ Set logger settings. """
-        self.logger.setLevel(self.LEVEL)
+        self.logger.setLevel(logging.DEBUG)
 
         handler = logging.StreamHandler()
         handler.setFormatter(self.formatter)
         self.logger.addHandler(handler)
+        self.logger.addFilter(self.filter)
 
         if self.file:
             handler = logging.FileHandler(self.file)
@@ -125,44 +136,68 @@ class Logger:
         self._formatter = value
         self._refresh_logger()
 
+    @property
+    def filter(self):
+        return self._filter
+
+    @filter.setter
+    def filter(self, value):
+        self._filter = value
+        self._refresh_logger()
+
+    @property
+    def level(self):
+        return self._level
+
+    @level.setter
+    def level(self, value):
+        self._level = value
+
+
 
     def __call__(self, *args, **kwargs):
         return self.inform(*args, **kwargs)
 
     def debug(self, message, *args, **kwargs):
         """ Log DEBUG message. """
-        message = message.format(*args, **kwargs)
-        self.logger.debug(message)
-        self._call_hooks(DEBUG, message)
+        if self.level & DEBUG:
+            message = message.format(*args, **kwargs)
+            self.logger.debug(message)
+            self._call_hooks(DEBUG, message)
 
     def inform(self, message, *args, **kwargs):
         """ Log INFO message. """
-        message = message.format(*args, **kwargs)
-        self.logger.info(message)
-        self._call_hooks(INFO, message)
+        if self.level & INFO:
+            message = message.format(*args, **kwargs)
+            self.logger.info(message)
+            self._call_hooks(INFO, message)
 
     def warn(self, message, *args, **kwargs):
         """ Log WARNING message. """
-        message = message.format(*args, **kwargs)
-        self.logger.warning(message)
-        self._call_hooks(WARNING, message)
+        if self.level & WARNING:
+            message = message.format(*args, **kwargs)
+            self.logger.warning(message)
+            self._call_hooks(WARNING, message)
 
     def err(self, message, *args, **kwargs):
         """ Log ERROR message. """
-        message = message.format(*args, **kwargs)
-        self.logger.error(message)
-        self._call_hooks(ERROR, message)
+        if self.level & ERROR:
+            message = message.format(*args, **kwargs)
+            self.logger.error(message)
+            self._call_hooks(ERROR, message)
 
     def fatal(self, message, *args, **kwargs):
         """ Log FATAL message. """
-        message = message.format(*args, **kwargs)
-        self.logger.fatal(message)
-        self._call_hooks(FATAL, message)
+        if self.level & FATAL:
+            message = message.format(*args, **kwargs)
+            self.logger.fatal(message)
+            self._call_hooks(FATAL, message)
 
     def exception(self, exception, message='', *args, **kwargs):
         """ Log exception. """
-        self.logger.exception(exception)
-        self._call_hooks(EXCEPTION, message)
+        if self.level & EXCEPTION:
+            self.logger.exception(exception)
+            self._call_hooks(EXCEPTION, message)
 
 
 def get(name, file=None):
