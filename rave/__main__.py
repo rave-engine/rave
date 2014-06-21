@@ -22,6 +22,7 @@ def main():
 
     from . import bootstrap
     bootstrap.bootstrap_engine(args.bootstrapper)
-    bootstrap.bootstrap_game(args.game_bootstrapper, args.game)
+    if args.game:
+        game = bootstrap.bootstrap_game(args.game_bootstrapper, args.game)
 
 main()

@@ -75,7 +75,7 @@ def bootstrap_game(bootstrapper=None, base=None):
     game.set_current(new_game)
     _log('Bootstrapping game file system...')
     bootstrapper.bootstrap_filesystem(new_game.fs)
-    bootstrapper.bootstrap_game_filesystem(new_game.fs, base)
+    bootstrapper.bootstrap_game_filesystem(new_game)
     game.clear_current()
 
     return new_game

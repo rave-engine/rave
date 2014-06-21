@@ -37,16 +37,14 @@ def bootstrap_filesystem(filesystem):
     filesystem.mount(bootstrap.MODULE_MOUNT, fsp.FileSystemProvider(filesystem, MODULE_PATH))
     filesystem.mount(bootstrap.COMMON_MOUNT, fsp.FileSystemProvider(filesystem, COMMON_PATH))
 
-def bootstrap_game_filesystem(filesystem, base):
+def bootstrap_game_filesystem(game):
     """ Bootstrap the game. """
     import rave.modules.filesystemprovider as fsp
 
     # Determine file system locations.
-    if base is None:
-        base = GAME_DEFAULT_PATH
-    game_dir = path.join(base, 'game')
-    game_module_dir = path.join(base, 'modules')
+    game_dir = path.join(game.basedir, 'game')
+    game_module_dir = path.join(game.basedir, 'modules')
 
     # Bootstrap game module mount.
-    filesystem.mount(bootstrap.GAME_MOUNT, fsp.FileSystemProvider(filesystem, game_dir))
-    filesystem.mount(bootstrap.MODULE_MOUNT, fsp.FileSystemProvider(filesystem, game_module_dir))
+    game.fs.mount(bootstrap.GAME_MOUNT, fsp.FileSystemProvider(game.fs, game_dir))
+    game.fs.mount(bootstrap.MODULE_MOUNT, fsp.FileSystemProvider(game.fs, game_module_dir))
