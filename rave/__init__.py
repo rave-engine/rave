@@ -10,3 +10,4 @@ from . import log
 from . import bootstrap, bootstrappers
 from . import filesystem
 from . import loader
+from . import game
