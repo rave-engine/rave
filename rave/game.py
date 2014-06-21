@@ -4,7 +4,7 @@ rave game module.
 This contains the code that ties everything together to run a single game.
 """
 import threading
-from . import filesystem
+from rave import filesystem
 
 
 ## Internal.
