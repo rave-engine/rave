@@ -83,6 +83,11 @@ class FileSystemProvider:
         self.basepath = basepath
         self._file_list = None
 
+        if not path.exists(self.basepath):
+            raise fs.FileNotFound(self.basepath)
+        elif not path.isdir(self.basepath):
+            raise fs.NotADirectory(self.basepath)
+
     def __repr__(self):
         return '<{cls}[{base}]>'.format(cls=self.__class__.__name__, base=self.basepath)
 
