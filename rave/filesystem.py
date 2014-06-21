@@ -391,7 +391,7 @@ class FileSystem:
         """ Normalize path to canonical path. """
         # Quick check to see if we need to normalize at all.
         if path.startswith(self.ROOT) and not self.BAD_PATH_PATTERN.search(path):
-            if path.endswith(self.PATH_SEPARATOR):
+            if path.endswith(self.PATH_SEPARATOR) and path != self.ROOT:
                 return path[:-len(self.PATH_SEPARATOR)]
             return path
 
