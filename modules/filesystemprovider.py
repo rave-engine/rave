@@ -87,6 +87,8 @@ class FileSystemProvider:
             raise fs.FileNotFound(self.basepath)
         elif not path.isdir(self.basepath):
             raise fs.NotADirectory(self.basepath)
+        elif not os.access(self.basepath, os.R_OK | os.X_OK):
+            raise fs.FileNotReadable(self.basepath)
 
     def __repr__(self):
         return '<{cls}[{base}]>'.format(cls=self.__class__.__name__, base=self.basepath)
