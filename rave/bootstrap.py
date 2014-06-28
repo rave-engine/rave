@@ -40,7 +40,7 @@ def _find_engine_bootstrapper():
     # We currently only have one bootstrapper.
     return 'filesystem'
 
-def _find_game_bootstrapper():
+def _find_game_bootstrapper(base):
     """ Determine the bootstrapper to use for bootstrapping the game. """
     # We still only have one bootstrapper.
     return 'filesystem'
@@ -72,7 +72,7 @@ def bootstrap_game(bootstrapper=None, base=None):
     game = rave.game.Game('TestGame', base)
 
     if not bootstrapper:
-        bootstrapper = _find_game_bootstrapper()
+        bootstrapper = _find_game_bootstrapper(base)
 
     _log('Bootstrapping game using "{name}" bootstrapper.', name=bootstrapper)
     bootstrapper = importlib.import_module('rave.bootstrappers.' + bootstrapper)
