@@ -36,7 +36,7 @@ _builtin__import__ = None
 
 ## Loader classes.
 
-class ModuleLoader(importlib.abc.InspectLoader):
+class VFSModuleLoader(importlib.abc.InspectLoader):
     """ A loader that loads modules from a virtual file system. """
 
     def __init__(self, filesystem):
@@ -238,7 +238,7 @@ class EmptyPackageLoader(importlib.abc.InspectLoader):
         return "<rave module holder '{}'>".format(module.__name__)
 
 
-class ModuleFinder(importlib.abc.MetaPathFinder):
+class VFSModuleFinder(importlib.abc.MetaPathFinder):
     """ A module that attempts to find modules in the virtual file system and pass them to relevant loaders. """
     _loaders = {}
     _package_loader = EmptyPackageLoader()
@@ -264,7 +264,7 @@ class ModuleFinder(importlib.abc.MetaPathFinder):
         if not current:
             return None
         if current not in self._loaders:
-            self._loaders[current] = ModuleLoader(current.fs)
+            self._loaders[current] = VFSModuleLoader(current.fs)
 
         # Search module path in the virtual file system.
         relpath = name.replace(self.package + '.', '').replace('.', current.fs.PATH_SEPARATOR)
@@ -351,7 +351,7 @@ def install_hook(package, paths, local=True):
     Register an import hook for the virtual file system. Returns an identifier that can be passed to `remove_hook`.
     `package` gives the base package this hook should apply to, `paths` the search paths in the VFS the hook should search in.
     """
-    finder = ModuleFinder(paths, package, local)
+    finder = VFSModuleFinder(paths, package, local)
     sys.meta_path.insert(0, finder)
     _installed_finders.append(finder)
 
