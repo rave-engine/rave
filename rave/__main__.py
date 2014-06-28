@@ -25,4 +25,6 @@ def main():
     if args.game:
         game = bootstrap.bootstrap_game(args.game_bootstrapper, args.game)
 
+    bootstrap.shutdown()
+
 main()
