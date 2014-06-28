@@ -18,7 +18,7 @@ GAME_DEFAULT_PATH = path.dirname(ENGINE_BASE_PATH)
 
 def bootstrap_modules():
     # Make sure the engine module package is imported and set the temporay bootstrap import path.
-    module_package = importlib.import_module(bootstrap.MODULE_PACKAGE)
+    module_package = importlib.import_module(rave.bootstrap.MODULE_PACKAGE)
     module_package.__path__ = [ MODULE_PATH ]
 
     # Bootstrap modules.
@@ -46,9 +46,9 @@ def bootstrap_game_filesystem(game):
     import rave.modules.filesystemprovider as fsp
 
     # Determine file system locations.
-    if game.basedir:
-        game_dir = path.join(game.basedir, 'game')
-        game_module_dir = path.join(game.basedir, 'modules')
+    if game.base:
+        game_dir = path.join(game.base, 'game')
+        game_module_dir = path.join(game.base, 'modules')
 
         # Bootstrap game module mount.
         game.fs.mount(rave.bootstrap.GAME_MOUNT, fsp.FileSystemProvider(game.fs, game_dir))
