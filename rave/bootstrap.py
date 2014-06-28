@@ -15,7 +15,12 @@ Bootstrappers should be placed in rave/bootstrappers/ and should implement the f
 - bootstrap_game_filesystem(): bootstrap game file system and mount rave.bootstrap.GAME_MOUNT.
 """
 import importlib
-from rave import __version__, filesystem, loader, log, game
+
+from rave import __version__
+import rave.loader
+import rave.log
+import rave.game
+
 
 ENGINE_MOUNT = '/.rave'
 ENGINE_PACKAGE = 'rave'
@@ -28,7 +33,7 @@ COMMON_MOUNT = '/.common'
 
 ## Internal.
 
-_log = log.get(__name__)
+_log = rave.log.get(__name__)
 
 def _find_engine_bootstrapper():
     """ Determine the bootstrapper to use for bootstrapping the engine parts. """
@@ -50,10 +55,10 @@ def bootstrap_engine(bootstrapper=None):
         bootstrapper = _find_engine_bootstrapper()
 
     _log('Installing import hooks...')
-    loader.patch_python()
-    loader.install_hook(ENGINE_PACKAGE, [ ENGINE_MOUNT ], local=False)
-    loader.install_hook(MODULE_PACKAGE, [ MODULE_MOUNT ])
-    loader.install_hook(GAME_PACKAGE, [ GAME_MOUNT ])
+    rave.loader.patch_python()
+    rave.loader.install_hook(ENGINE_PACKAGE, [ ENGINE_MOUNT ], local=False)
+    rave.loader.install_hook(MODULE_PACKAGE, [ MODULE_MOUNT ])
+    rave.loader.install_hook(GAME_PACKAGE, [ GAME_MOUNT ])
 
     _log('Bootstrapping engine using "{name}" bootstrapper.', name=bootstrapper)
     bootstrapper = importlib.import_module('rave.bootstrappers.' + bootstrapper)
@@ -64,7 +69,7 @@ def bootstrap_engine(bootstrapper=None):
 
 def bootstrap_game(bootstrapper=None, base=None):
     """ Bootstrap the game with `base` as game base. """
-    new_game = game.Game('TestGame', base)
+    game = rave.game.Game('TestGame', base)
 
     if not bootstrapper:
         bootstrapper = _find_game_bootstrapper()
@@ -72,10 +77,15 @@ def bootstrap_game(bootstrapper=None, base=None):
     _log('Bootstrapping game using "{name}" bootstrapper.', name=bootstrapper)
     bootstrapper = importlib.import_module('rave.bootstrappers.' + bootstrapper)
 
-    game.set_current(new_game)
+    rave.game.set_current(new_game)
     _log('Bootstrapping game file system...')
-    bootstrapper.bootstrap_filesystem(new_game.fs)
-    bootstrapper.bootstrap_game_filesystem(new_game)
-    game.clear_current()
+    bootstrapper.bootstrap_filesystem(game.fs)
+    bootstrapper.bootstrap_game_filesystem(game)
+    rave.game.clear_current()
 
-    return new_game
+    return game
+
+def shutdown():
+    """ Finalize and shutdown engine. """
+    rave.loader.remove_hooks()
+    rave.loader.restore_python()

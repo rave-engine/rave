@@ -16,7 +16,8 @@ and from then on use `rave.backends.<category>` to access the selected backend.
 """
 import sys
 import heapq
-from rave import log
+import rave.log
+
 
 ## Constants.
 
@@ -27,7 +28,7 @@ PRIORITY_NEUTRAL = 0
 
 ## Internal variables.
 
-_log = log.get(__name__)
+_log = rave.log.get(__name__)
 _available_backends = {}
 _selected_backends = {}
 

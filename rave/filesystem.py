@@ -3,12 +3,13 @@ import builtins
 import re
 import threading
 
-from rave import common, log
+import rave.common
+import rave.log
 
 
 ## Errors.
 
-class FileSystemError(common.raveError, IOError):
+class FileSystemError(rave.common.raveError, IOError):
     def __init__(self, filename, message=None):
         super().__init__(message or filename)
         self.filename = filename
@@ -38,7 +39,7 @@ class NotADirectory(NotADirectoryError, FileSystemError):
 
 ## Internals.
 
-_log = log.get(__name__)
+_log = rave.log.get(__name__)
 
 
 ## API.

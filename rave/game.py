@@ -4,7 +4,8 @@ rave game module.
 This contains the code that ties everything together to run a single game.
 """
 import threading
-from rave import filesystem, events
+import rave.filesystem
+import rave.events
 
 
 ## Internal.
@@ -47,5 +48,6 @@ class Game:
     def __init__(self, name, basedir):
         self.name = name
         self.basedir = basedir
-        self.fs = filesystem.FileSystem()
-        self.events = events.EventBus()
+        self.fs = rave.filesystem.FileSystem()
+        self.events = rave.events.EventBus()
+

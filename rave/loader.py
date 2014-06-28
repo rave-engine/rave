@@ -14,7 +14,9 @@ import importlib.util
 import threading
 import marshal
 
-from rave import log, filesystem, game
+import rave.log
+import rave.filesystem
+import rave.game
 
 
 ## Constants.
@@ -26,10 +28,10 @@ SOURCE_FALLBACK_ENCODING = 'iso-8859-1'
 ## Internals.
 
 _installed_finders = []
-_log = log.get(__name__)
+_log = rave.log.get(__name__)
 _import_lock = threading.RLock()
 _local_cache = {}
-_builtin_import__ = None
+_builtin__import__ = None
 
 
 ## Loader classes.
@@ -258,7 +260,7 @@ class ModuleFinder(importlib.abc.MetaPathFinder):
             return self._package_loader
 
         # Do we have a file system to load from?
-        current = game.current()
+        current = rave.game.current()
         if not current:
             return None
         if current not in self._loaders:
@@ -286,7 +288,7 @@ class ModuleFinder(importlib.abc.MetaPathFinder):
                     self._loaders[current].register(name, self.package, path, is_package)
                     _log.debug('Found {pkg} in {path}. (candidates: {existing})', pkg=name, path=path, existing=[file for file, _ in existing])
                     return self._loaders[current]
-                except filesystem.FileNotFound:
+                except rave.filesystem.FileNotFound:
                     continue
 
         # Nothing found.
@@ -308,7 +310,7 @@ class ModuleFinder(importlib.abc.MetaPathFinder):
 ## Python patching.
 
 def __rave_import__(module, globals=None, locals=None, fromlist=(), level=0):
-    current = game.current()
+    current = rave.game.current()
 
     with _import_lock:
         # Local modules are loaded on a per-game basis.
