@@ -51,3 +51,4 @@ class Game:
         self.fs = rave.filesystem.FileSystem()
         self.events = rave.events.EventBus()
 
+        rave.events.engine.emit('game.created', self)
