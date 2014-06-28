@@ -45,9 +45,9 @@ def clear_current():
 
 class Game:
     """ A game session in rave. """
-    def __init__(self, name, basedir):
+    def __init__(self, name, base):
         self.name = name
-        self.basedir = basedir
+        self.base = base
         self.fs = rave.filesystem.FileSystem()
         self.events = rave.events.EventBus()
 
