@@ -16,7 +16,7 @@ import marshal
 
 import rave.log
 import rave.filesystem
-import rave.game
+import rave.execution
 
 
 ## Constants.
@@ -260,9 +260,11 @@ class VFSModuleFinder(importlib.abc.MetaPathFinder):
             return self._package_loader
 
         # Do we have a file system to load from?
-        current = rave.game.current()
-        if not current:
+        env = rave.execution.current()
+        if not env or not env.game:
             return None
+
+        current = env.game
         if current not in self._loaders:
             self._loaders[current] = VFSModuleLoader(current.fs)
 
@@ -310,7 +312,11 @@ class VFSModuleFinder(importlib.abc.MetaPathFinder):
 ## Python patching.
 
 def __rave_import__(module, globals=None, locals=None, fromlist=(), level=0):
-    current = rave.game.current()
+    env = rave.execution.current()
+    if env and env.game:
+        current = env.game
+    else:
+        current = None
 
     with _import_lock:
         # Local modules are loaded on a per-game basis.

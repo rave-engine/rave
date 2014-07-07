@@ -31,11 +31,11 @@ _loggers = {}
 class LogFilter(logging.Filter):
     """ Filter that adds current game information to every message. """
     def filter(self, record):
-        from . import game
+        from . import execution
 
-        current = game.current()
-        if current:
-            record.game = current.name
+        env = execution.current()
+        if env and env.game:
+            record.game = env.game.name
         else:
             record.game = '<engine>'
         return True
@@ -61,6 +61,8 @@ class Logger:
     DATE_FORMAT = None
     FILE = None
     LEVEL = INFO | WARNING | ERROR | FATAL | EXCEPTION
+    if __debug__:
+        LEVEL |= DEBUG
 
     def __init__(self, name=None, file=None, level=None, filter=None, formatter=None):
         self._file = file or self.FILE

@@ -77,11 +77,10 @@ def bootstrap_game(bootstrapper=None, base=None):
     _log('Bootstrapping game using "{name}" bootstrapper.', name=bootstrapper)
     bootstrapper = importlib.import_module('rave.bootstrappers.' + bootstrapper)
 
-    rave.game.set_current(game)
-    _log('Bootstrapping game file system...')
-    bootstrapper.bootstrap_filesystem(game.fs)
-    bootstrapper.bootstrap_game_filesystem(game)
-    rave.game.clear_current()
+    with game.env:
+        _log('Bootstrapping game file system...')
+        bootstrapper.bootstrap_filesystem(game.fs)
+        bootstrapper.bootstrap_game_filesystem(game)
 
     return game
 

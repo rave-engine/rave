@@ -8,6 +8,7 @@ __license__ = 'BSD'
 
 from . import log
 from . import bootstrap, bootstrappers
+from . import execution
 from . import filesystem
 from . import loader
 from . import game
