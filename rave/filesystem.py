@@ -59,6 +59,9 @@ class FileSystem:
         self.clear()
 
     def clear(self):
+        if hasattr(self, '_roots'):
+            _log.debug('Clearing file system...')
+
         with self._lock:
             # File system roots. A mapping of path -> [ list of providers ].
             self._roots = {}
