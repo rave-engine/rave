@@ -54,7 +54,7 @@ def pop():
 class ExecutionEnvironment:
 
     def __init__(self, game=None):
-        self.game = None
+        self.game = game
         self.apis = {}
         self.globals = {}
         self.locals = {}
@@ -65,6 +65,9 @@ class ExecutionEnvironment:
 
     def __exit__(self, exctype, excval, exctb):
         pop()
+
+    def __repr__(self):
+        return '<{} for game {!r}>'.format(self.__class__.__qualname__, self.game)
 
     def compile(self, code, filename='<unknown>'):
         return compile(code, 'exec', filename, dont_inherit=True, optimize=2)
