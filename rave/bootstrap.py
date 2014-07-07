@@ -84,6 +84,11 @@ def bootstrap_game(bootstrapper=None, base=None):
 
     return game
 
+def shutdown_game(game):
+    """ Finalize and shut down game. """
+    with game.env:
+        game.fs.clear()
+
 def shutdown():
     """ Finalize and shutdown engine. """
     rave.loader.remove_hooks()
