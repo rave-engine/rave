@@ -8,7 +8,7 @@ import importlib
 import rave.bootstrap
 
 
-MODULES = [ 'filesystemprovider' ]
+MODULES = [ 'filesystemsource' ]
 ENGINE_BASE_PATH = path.dirname(path.dirname(path.dirname(__file__)))
 ENGINE_PATH = path.join(ENGINE_BASE_PATH, 'rave')
 MODULE_PATH = path.join(ENGINE_BASE_PATH, 'modules')

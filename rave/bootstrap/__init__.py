@@ -67,8 +67,8 @@ def bootstrap_engine(bootstrapper=None):
     rave.game.engine = rave.game.Game('<engine>')
 
     # We bootstrap vital modules first that are likely needed to bootstrap the file system.
-    _log('Bootstrapping engine modules...')
     with rave.game.engine.env:
+        _log('Bootstrapping engine modules...')
         bootstrapper.bootstrap_modules()
 
     return rave.game.engine
@@ -92,7 +92,7 @@ def bootstrap_game(bootstrapper=None, base=None):
 
 def shutdown_game(game):
     """ Finalize and shut down game. """
-    _log('Shutting down game {}...', game)
+    _log('Shutting down game {}...', game.name)
     with game.env:
         game.fs.clear()
 
