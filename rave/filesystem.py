@@ -122,7 +122,12 @@ class FileSystem:
                 continue
 
             # Gotcha.
-            self._cache_transformed_file(transformer, file)
+            try:
+                handle = self.open(file)
+            except:
+                _log.warning('Couldn\'t open {provider}:{path} for transformer {transformer}. Moving on...')
+                continue
+            self._cache_transformed_file(transformer, file, handle)
 
     def _cache_directory(self, provider, root, path):
         """ Add `path`, provided by `provider`, as a directory to the file cache. """
@@ -142,7 +147,13 @@ class FileSystem:
 
             consumed = False
             for transformer in transformers:
-                consumed = self._cache_transformed_file(transformer, path)
+                try:
+                    handle = provider.open(path)
+                except:
+                    _log.warning('Couldn\'t open {provider}:{path} for transformer {transformer}. Moving on...')
+                    continue
+
+                consumed = self._cache_transformed_file(transformer, path, handle)
                 if consumed:
                     break
 
@@ -170,7 +181,7 @@ class FileSystem:
                 self._listing_cache.setdefault(parent, set())
                 self._listing_cache[parent].add(basename)
 
-    def _cache_transformed_file(self, transformer, path):
+    def _cache_transformed_file(self, transformer, path, handle):
         """
         Add a transformed file at `path`, transformed by `transformer`, to the file cache.
         This will return whether or not the original file was consumed by `transformer`.
@@ -180,7 +191,7 @@ class FileSystem:
         if it exists on it.
         """
         try:
-            instance = transformer(path)
+            instance = transformer(path, handle)
         except Exception as e:
             _log.warn('Error while transforming {path} with {tranformer}: {err}', path=path, transformer=transformer, err=e)
             return False
@@ -299,7 +310,7 @@ class FileSystem:
         Add `transformer` as a transformer for files matching `pattern`.
 
         `transformer` has to be a class(!) satisfying the provider API (see `mount`), plus the following API:
-         - __init__(filename): initialize object, can raise any kind of error if the file is invalid.
+         - __init__(filename, handle): initialize object, can raise any kind of error if the file is invalid. `handle` is a `File` object pointing to the opened file.
          - valid(): return whether the file is valid according to the format this transformer parses.
          - consumes(): return whether the source file should be retained in the file system.
          - relative(): return whether files exposed by this transformer should be relative to the path of the source file or absolute.
