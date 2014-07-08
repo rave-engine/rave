@@ -70,9 +70,11 @@ class ExecutionEnvironment:
         return '<{} for game {!r}>'.format(self.__class__.__qualname__, self.game)
 
     def compile(self, code, filename='<unknown>'):
+        """ Compile code for use in this environment. """
         return compile(code, 'exec', filename, dont_inherit=True, optimize=2)
 
     def run(self, code, filename='<unknown>'):
+        """ Run code in this environment. """
         with environment(self.env):
             if not isinstance(code, types.CodeType):
                 code = self.compile(code, filename)
@@ -80,6 +82,7 @@ class ExecutionEnvironment:
             exec(code, self.globals, self.locals)
 
     def run_file(self, filename):
+        """ Run file system file in this environment. """
         with self.game.fs.open(filename) as f:
             code = f.read()
 
