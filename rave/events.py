@@ -24,8 +24,3 @@ class EventBus:
 
     def _invoke_handler(self, handler, event, args, kwargs):
         handler(event, *args, **kwargs)
-
-
-## Engine event bus.
-
-engine = EventBus()

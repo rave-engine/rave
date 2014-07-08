@@ -22,4 +22,7 @@ class Game:
         self.events = rave.events.EventBus()
         self.env = rave.execution.ExecutionEnvironment(self)
 
-        rave.events.engine.emit('game.created', self)
+        # Announce game creation over parent event bus.
+        parent = rave.execution.current()
+        if parent and parent.game:
+            parent.game.events.emit('game.created', self)
