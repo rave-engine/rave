@@ -10,6 +10,14 @@ import rave.events
 # The engine game!
 engine = None
 
+def current():
+    """ Get currently running game. This is a convenience wrapper for rave.execution.current(). """
+    env = rave.execution.current()
+    if not env or not env.game:
+        return None
+
+    return env.game
+
 
 ## A game object.
 
@@ -23,6 +31,6 @@ class Game:
         self.env = rave.execution.ExecutionEnvironment(self)
 
         # Announce game creation over parent event bus.
-        parent = rave.execution.current()
-        if parent and parent.game:
-            parent.game.events.emit('game.created', self)
+        parent = current()
+        if parent:
+            parent.events.emit('game.created', self)

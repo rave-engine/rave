@@ -31,11 +31,11 @@ _loggers = {}
 class LogFilter(logging.Filter):
     """ Filter that adds current game information to every message. """
     def filter(self, record):
-        from . import execution
+        from . import game
 
-        env = execution.current()
-        if env and env.game:
-            record.game = env.game.name
+        current = game.current()
+        if current:
+            record.game = current.name
         else:
             record.game = '<init>'
         return True
