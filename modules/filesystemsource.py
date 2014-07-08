@@ -32,7 +32,7 @@ def _translate_errors(f):
         # Kind of dirty.
         if isinstance(self, FileSystemFile):
             filename = self.filename
-        elif isinstance(self, FileSystemProvider):
+        elif isinstance(self, FileSystemSource):
             filename = self.basepath
 
         try:
@@ -75,7 +75,7 @@ def _ensure_opened(f):
     return check
 
 
-class FileSystemProvider:
+class FileSystemSource:
     """ A provider that sources from an actual underlying file system. """
 
     def __init__(self, filesystem, basepath):
