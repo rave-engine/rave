@@ -16,11 +16,13 @@ def main():
     args = parse_arguments()
 
     from . import bootstrap
-    bootstrap.bootstrap_engine(args.bootstrapper)
-    if args.game:
-        game = bootstrap.bootstrap_game(args.game_bootstrapper, args.game)
+    engine = bootstrap.bootstrap_engine(args.bootstrapper)
 
-    bootstrap.shutdown_game(game)
-    bootstrap.shutdown()
+    with engine.env:
+        if args.game:
+            game = bootstrap.bootstrap_game(args.game_bootstrapper, args.game)
+            bootstrap.shutdown_game(game)
+
+        bootstrap.shutdown()
 
 main()

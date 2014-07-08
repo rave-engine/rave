@@ -37,7 +37,7 @@ class LogFilter(logging.Filter):
         if env and env.game:
             record.game = env.game.name
         else:
-            record.game = '<engine>'
+            record.game = '<init>'
         return True
 
 

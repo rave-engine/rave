@@ -7,12 +7,15 @@ import rave.filesystem
 import rave.execution
 import rave.events
 
+# The engine game!
+engine = None
+
 
 ## A game object.
 
 class Game:
     """ A game session in rave. """
-    def __init__(self, name, base):
+    def __init__(self, name, base=None):
         self.name = name
         self.base = base
         self.fs = rave.filesystem.FileSystem()
