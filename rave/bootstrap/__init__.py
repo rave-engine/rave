@@ -60,7 +60,7 @@ def bootstrap_engine(bootstrapper=None):
     rave.loader.install_hook(MODULE_PACKAGE, [ MODULE_MOUNT ])
     rave.loader.install_hook(GAME_PACKAGE, [ GAME_MOUNT ])
 
-    _log('Bootstrapping engine using "{name}" bootstrapper.', name=bootstrapper)
+    _log('Bootstrapping engine using {name} bootstrapper.', name=bootstrapper)
     bootstrapper = importlib.import_module('rave.bootstrap.' + bootstrapper)
 
     _log.debug('Creating engine game...')
@@ -80,7 +80,7 @@ def bootstrap_game(bootstrapper=None, base=None):
     if not bootstrapper:
         bootstrapper = _find_game_bootstrapper(base)
 
-    _log('Bootstrapping game using "{name}" bootstrapper.', name=bootstrapper)
+    _log('Bootstrapping game using {name} bootstrapper.', name=bootstrapper)
     bootstrapper = importlib.import_module('rave.bootstrap.' + bootstrapper)
 
     with game.env:
