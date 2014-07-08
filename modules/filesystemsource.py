@@ -91,7 +91,7 @@ class FileSystemSource:
             raise fs.FileNotReadable(self.basepath)
 
     def __repr__(self):
-        return '<{cls}[{base}]>'.format(cls=self.__class__.__name__, base=self.basepath)
+        return '<{cls}: {base}>'.format(cls=self.__class__.__name__, base=self.basepath)
 
     def _to_native_path(self, filename):
         """ Translate virtual file system path to native file system path. """

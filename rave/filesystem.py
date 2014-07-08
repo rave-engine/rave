@@ -96,7 +96,7 @@ class FileSystem:
         This function will check if transformers exist for the file in the process, which might indirectly trigger recursion,
         since a transformed file acts as a new provider.
         """
-        _log.debug('Caching {prov} for {root}...', prov=provider, root=root)
+        _log.debug('Caching mount point {root} <- {prov}...', prov=provider, root=root)
         # Add root to cache.
         self._cache_directory(provider, root, root)
 
@@ -131,7 +131,7 @@ class FileSystem:
 
     def _cache_directory(self, provider, root, path):
         """ Add `path`, provided by `provider`, as a directory to the file cache. """
-        _log.debug('Caching directory {path} <- {provider}...', path=path, provider=provider)
+        _log.debug('Caching directory path {path} <- {provider}...', path=path, provider=provider)
 
         with self._lock:
             self._listing_cache.setdefault(path, set())
@@ -139,7 +139,7 @@ class FileSystem:
 
     def _cache_file(self, provider, root, path):
         """ Add `path`, provided by `provider`, as a file to the file cache. """
-        _log.debug('Caching file {path} <- {provider}...', path=path, provider=provider)
+        _log.debug('Caching file path {path} <- {provider}...', path=path, provider=provider)
 
         for pattern, transformers in self._transformers.items():
             if not pattern.search(path):
