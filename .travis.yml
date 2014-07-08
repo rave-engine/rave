@@ -12,7 +12,7 @@ script:
   # Check if everything compiles.
   - python -m compileall rave modules tests
   # Run unit tests!
-  - nosetests
+  - py.test tests
 # After.
 after_success:
   # Report coverage.
