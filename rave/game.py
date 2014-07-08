@@ -34,3 +34,6 @@ class Game:
         parent = current()
         if parent:
             parent.events.emit('game.created', self)
+
+    def __repr__(self):
+        return '<{}: {}>'.format(self.__class__.__qualname__, self.name)
