@@ -15,14 +15,14 @@ def parse_arguments():
 def main():
     args = parse_arguments()
 
-    from . import bootstrap
-    engine = bootstrap.bootstrap_engine(args.bootstrapper)
+    import rave.bootstrap
+    engine = rave.bootstrap.bootstrap_engine(args.bootstrapper)
 
     with engine.env:
         if args.game:
-            game = bootstrap.bootstrap_game(args.game_bootstrapper, args.game)
-            bootstrap.shutdown_game(game)
+            game = rave.bootstrap.bootstrap_game(args.game_bootstrapper, args.game)
+            rave.bootstrap.shutdown_game(game)
 
-        bootstrap.shutdown()
+        rave.bootstrap.shutdown()
 
 main()

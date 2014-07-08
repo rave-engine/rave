@@ -61,7 +61,7 @@ def bootstrap_engine(bootstrapper=None):
     rave.loader.install_hook(GAME_PACKAGE, [ GAME_MOUNT ])
 
     _log('Bootstrapping engine using "{name}" bootstrapper.', name=bootstrapper)
-    bootstrapper = importlib.import_module('rave.bootstrappers.' + bootstrapper)
+    bootstrapper = importlib.import_module('rave.bootstrap.' + bootstrapper)
 
     _log.debug('Creating engine game...')
     rave.game.engine = rave.game.Game('<engine>')
@@ -81,7 +81,7 @@ def bootstrap_game(bootstrapper=None, base=None):
         bootstrapper = _find_game_bootstrapper(base)
 
     _log('Bootstrapping game using "{name}" bootstrapper.', name=bootstrapper)
-    bootstrapper = importlib.import_module('rave.bootstrappers.' + bootstrapper)
+    bootstrapper = importlib.import_module('rave.bootstrap.' + bootstrapper)
 
     with game.env:
         _log('Bootstrapping game file system...')
@@ -99,5 +99,7 @@ def shutdown_game(game):
 def shutdown():
     """ Finalize and shutdown engine. """
     _log('Shutting down engine...')
+    shutdown_game(rave.game.engine)
+
     rave.loader.remove_hooks()
     rave.loader.restore_python()

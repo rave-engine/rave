@@ -7,7 +7,7 @@ __author__ = 'rave developers and contributors'
 __license__ = 'BSD'
 
 from . import log
-from . import bootstrap, bootstrappers
+from . import bootstrap
 from . import execution
 from . import filesystem
 from . import loader
