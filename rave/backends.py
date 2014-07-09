@@ -17,6 +17,7 @@ and from then on use `rave.backends.<category>` to access the selected backend.
 import sys
 import heapq
 import rave.log
+import rave.game
 
 
 ## Constants.
@@ -37,17 +38,19 @@ _selected_backends = {}
 
 def _insert_backend(category, backend):
     """ Insert backend into internal structure for category. """
-    if category not in _available_backends:
-        _available_backends[category] = []
+    current = rave.game.current()
+    if (current, category) not in _available_backends:
+        _available_backends[current, category] = []
 
     # Adjust priority so that an ascending sort (as specified by heapq) will yield highest-priority backends.
     adjusted_priority = PRIORITY_MAX - (backend.PRIORITY + PRIORITY_MIN)
-    heapq.heappush(_available_backends[category], (adjusted_priority, id(backend), backend))
+    heapq.heappush(_available_backends[current, category], (adjusted_priority, id(backend), backend))
 
 def _backends_for(category):
     """ Yield a list of sorted backends for category. """
     # Easily enough, the use of heapq makes sure it's already sorted.
-    return (backend for priority, id, backend in _available_backends.get(category, []))
+    current = rave.game.current()
+    return (backend for priority, id, backend in _available_backends.get((current, category), []))
 
 def _backend_available(backend):
     """ Determine if the backend is available for this platform. """
@@ -59,15 +62,18 @@ def _backend_available(backend):
 
 def _mark_selected_backend(category, backend):
     """ Mark given backend as selected backend for category. """
-    _selected_backends[category] = backend
+    current = rave.game.current()
+    _selected_backends[current, category] = backend
 
 def _has_selected_backend(category):
     """ Determine if given category has a selected backend. """
-    return category in _selected_backends
+    current = rave.game.current()
+    return (current, category) in _selected_backends
 
 def _selected_backend(category):
     """ Get selected backend for category. """
-    return _selected_backends[category]
+    current = rave.game.current()
+    return _selected_backends[current, category]
 
 def _select_backend(category, backend):
     """
@@ -83,7 +89,6 @@ def _select_backend(category, backend):
 
     if loaded:
         _mark_selected_backend(category, backend)
-        setattr(sys.modules[__name__], category, backend)
     else:
         _log.warn('Selected {cat} backend {backend} but load() failed.', backend=backend.__name__, cat=category)
 
