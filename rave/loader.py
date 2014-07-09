@@ -29,9 +29,11 @@ SOURCE_FALLBACK_ENCODING = 'iso-8859-1'
 
 _installed_finders = []
 _log = rave.log.get(__name__)
-_import_lock = threading.RLock()
-_local_cache = {}
 _builtin__import__ = None
+_import_lock = threading.RLock()
+_import_local_cache = {}
+_import_chain = {}
+_import_nest_level = {}
 
 
 ## Loader classes.
@@ -313,23 +315,39 @@ def __rave_import__(module, globals=None, locals=None, fromlist=(), level=0):
     current = rave.game.current()
 
     with _import_lock:
+        _import_chain.setdefault(current, [])
+        _import_nest_level.setdefault(current, 0)
+
         # Local modules are loaded on a per-game basis.
         local = False
         for finder in _installed_finders:
             if finder.local and module.startswith(finder.package + '.'):
                 local = True
-                _local_cache.setdefault(current, {})
+                _import_local_cache.setdefault(current, {})
                 break
 
-        # Got a cached local module?
-        if local and (module, level) in _local_cache[current]:
-            return _local_cache[current][module, level]
+        if local:
+            # Got a cached local module?
+            if (module, fromlist, level) in _import_local_cache[current]:
+                return _import_local_cache[current][module, fromlist, level]
 
+            # Add module to chain to remove from sys.modules later, it's local after all.
+            _import_chain[current].append(module)
+
+        _import_nest_level[current] += 1
         res = _builtin__import__(module, globals, locals, fromlist, level)
+        _import_nest_level[current] -= 1
+
         if local:
             # Cache module.
-            _local_cache[current][module, level] = res
-            del sys.modules[module]
+            _import_local_cache[current][module, fromlist, level] = res
+
+        # Only remove modules from sys.modules when our import chain is fully done.
+        if _import_nest_level[current] == 0:
+            while _import_chain[current]:
+                mod = _import_chain[current].pop()
+                # Remove module from sys.modules to make Python not cache it. We do that ourselves.
+                sys.modules.pop(mod, None)
 
     return res
 
