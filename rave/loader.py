@@ -6,7 +6,6 @@ These hooks will themselves hook Python's import code to search certain given pa
 """
 import os
 import sys
-import builtins
 import imp
 import importlib.abc
 import importlib.machinery
@@ -29,11 +28,6 @@ SOURCE_FALLBACK_ENCODING = 'iso-8859-1'
 
 _installed_finders = []
 _log = rave.log.get(__name__)
-_builtin__import__ = None
-_import_lock = threading.RLock()
-_import_local_cache = {}
-_import_chain = {}
-_import_nest_level = {}
 
 
 ## Loader classes.
@@ -245,10 +239,9 @@ class VFSModuleFinder(importlib.abc.MetaPathFinder):
     _loaders = {}
     _package_loader = EmptyPackageLoader()
 
-    def __init__(self, search_paths, package, local=True):
+    def __init__(self, search_paths, package):
         self.search_paths = search_paths
         self.package = package
-        self.local = local
         self._package_loader.register(package)
 
     def find_module(self, name, path=None):
@@ -270,7 +263,7 @@ class VFSModuleFinder(importlib.abc.MetaPathFinder):
 
         # Search module path in the virtual file system.
         relpath = name.replace(self.package + '.', '').replace('.', current.fs.PATH_SEPARATOR)
-        _log.debug('Attempting to load {pkg} from file system...', pkg=name)
+        _log.debug('Attempting to load {pkg} from VFS..', pkg=name)
 
         for searchpath in self.search_paths:
             basepath = current.fs.join(searchpath, relpath)
@@ -288,13 +281,13 @@ class VFSModuleFinder(importlib.abc.MetaPathFinder):
             for path, is_package in existing:
                 try:
                     self._loaders[current].register(name, self.package, path, is_package)
-                    _log.debug('Found {pkg} in {path}. (candidates: {existing})', pkg=name, path=path, existing=[file for file, _ in existing])
+                    _log.debug('Found {pkg} in VFS: {path}. (candidates: {existing})', pkg=name, path=path, existing=[file for file, _ in existing])
                     return self._loaders[current]
                 except rave.filesystem.FileNotFound:
                     continue
 
         # Nothing found.
-        _log.debug('{pkg} not found in the VFS.', pkg=name)
+        _log.debug('{pkg} not found in VFS.', pkg=name)
         return None
 
     def find_spec(self, name, path, target=None):
@@ -309,67 +302,14 @@ class VFSModuleFinder(importlib.abc.MetaPathFinder):
         return '<rave.loader.ModuleFinder ({})>'.format(self.package)
 
 
-## Python patching.
-
-def __rave_import__(module, globals=None, locals=None, fromlist=(), level=0):
-    current = rave.game.current()
-
-    with _import_lock:
-        _import_chain.setdefault(current, [])
-        _import_nest_level.setdefault(current, 0)
-
-        # Local modules are loaded on a per-game basis.
-        local = False
-        for finder in _installed_finders:
-            if finder.local and module.startswith(finder.package + '.'):
-                local = True
-                _import_local_cache.setdefault(current, {})
-                break
-
-        if local:
-            # Got a cached local module?
-            if (module, fromlist, level) in _import_local_cache[current]:
-                return _import_local_cache[current][module, fromlist, level]
-
-            # Add module to chain to remove from sys.modules later, it's local after all.
-            _import_chain[current].append(module)
-
-        _import_nest_level[current] += 1
-        res = _builtin__import__(module, globals, locals, fromlist, level)
-        _import_nest_level[current] -= 1
-
-        if local:
-            # Cache module.
-            _import_local_cache[current][module, fromlist, level] = res
-
-        # Only remove modules from sys.modules when our import chain is fully done.
-        if _import_nest_level[current] == 0:
-            while _import_chain[current]:
-                mod = _import_chain[current].pop()
-                # Remove module from sys.modules to make Python not cache it. We do that ourselves.
-                sys.modules.pop(mod, None)
-
-    return res
-
-def patch_python():
-    global _builtin__import__
-    _builtin__import__ = builtins.__import__
-    builtins.__import__ = __rave_import__
-
-def restore_python():
-    global _builtin__import__
-    builtins.__import__ = _builtin__import__
-    _builtin__import__ = None
-
-
 ## API.
 
-def install_hook(package, paths, local=True):
+def install_hook(package, paths):
     """
     Register an import hook for the virtual file system. Returns an identifier that can be passed to `remove_hook`.
     `package` gives the base package this hook should apply to, `paths` the search paths in the VFS the hook should search in.
     """
-    finder = VFSModuleFinder(paths, package, local)
+    finder = VFSModuleFinder(paths, package)
     sys.meta_path.insert(0, finder)
     _installed_finders.append(finder)
 
