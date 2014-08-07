@@ -1,6 +1,7 @@
 """
 rave Python execution environments.
 """
+import sys
 import threading
 import types
 
@@ -36,7 +37,12 @@ def push(env):
         id = _identifier()
 
         _current_envs.setdefault(id, [])
+        if _current_envs[id]:
+            current = _current_envs[id][-1]
+            current.deactivate()
+
         _current_envs[id].append(env)
+        env.activate()
 
 def pop():
     """ Clear the current execution environment for whatever parallel mechanism is used. """
@@ -45,7 +51,15 @@ def pop():
 
         envs = _current_envs.get(id)
         if envs:
-            return envs.pop()
+            env = envs.pop()
+            env.deactivate()
+
+            if _current_envs[id]:
+                current = _current_envs[id][-1]
+                current.activate()
+
+            return env
+
         raise ValueError('No environment to clear.')
 
 
@@ -67,7 +81,15 @@ class ExecutionEnvironment:
         pop()
 
     def __repr__(self):
-        return '<{} for game {!r}>'.format(self.__class__.__qualname__, self.game)
+        return '<{} for {!r}>'.format(self.__class__.__qualname__, self.game)
+
+    def activate(self):
+        """ Activate environment. """
+        pass
+
+    def deactivate(self):
+        """ Deactivate environment. """
+        pass
 
     def compile(self, code, filename='<unknown>'):
         """ Compile code for use in this environment. """
