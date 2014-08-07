@@ -117,9 +117,9 @@ def select(category):
     Select a backend for the given `category`.
     Return the selected backend if it can find a suitable backend, else returns None.
     """
-    _log.debug('Selecting {cat} backend...', cat=category)
-
     if not _has_selected_backend(category):
+        _log.debug('Selecting {cat} backend...', cat=category)
+
         # Iterate through sorted list and find a proper backend.
         for backend in _backends_for(category):
             available = _backend_available(backend)
@@ -134,5 +134,6 @@ def select(category):
             _log.err('No {cat} backends available.', cat=category)
             return None
 
-    _log('Selected {cat} backend: {backend}', cat=category, backend=backend.__name__)
+        _log('Selected {cat} backend: {backend}', cat=category, backend=backend.__name__)
+    
     return _selected_backend(category)
