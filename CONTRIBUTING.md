@@ -24,20 +24,20 @@ __Whitespace__
 
 __Miscellaneous__
 - Try to keep a line within 120 characters in width. We don't specify a hard line wrap limit - use common sense.
-- (Almost) never use `from ... import *`. Always qualify the names you want to import, if you must use the `from ... import ...` syntax.
-  * The test cases are an exception to this.
+- (Almost) never use `from ... import *`. Always qualify the names you want to import, if you *have to* use the `from ... import ...` syntax.
+  * The test cases are an exception.
 - Use import aliases (`import foo.bar.baz as baz`) if you feel name references are becoming too long.
 - End a file with a newline.
-- Try to section off relevant grouped parts of your code, preferably with a header like '## Internals.' or '## API.'
+- Try to section off relevant grouped parts of your code, preferably with a comment header like '## Internals.' or '## API.'
 
 
 Commit messages
 ---------------
 
-For quick fixes, a short one-line message is fine. For bigger commits though, use the full message to describe what you added and how it works, briefly. Wrap those lines to 78 characters.
-Use the imperative form (`Add filesystem module tests.`, `Fix bug #1732.`, etc.) and proper punctuation in your commit messages.
+For quick fixes, a short one-line message is fine. For bigger commits, use the full message to describe what you added and how it works, briefly. Wrap those lines to 78 characters.
+Use the imperative form (`Add filesystem module tests.`, `Fix bug #1732.`, etc.) and proper punctuation and capitalisation in your commit messages.
 
-Seperate the distinct changes you make into seperate commits. Don't have a single commit that adds multiple (unrelated) features, adds a feature and fixed a bug elsewhere, et cetera.
+Seperate the distinct changes you make into seperate ('atomic') commits. Don't push a single commit that adds multiple features, or adds a feature and fixes a bug elsewhere, et cetera.
 
 Prefix the first line in your commit message with the subsystem the commit applies to. Valid subsystems are:
   * rave: the engine core.
@@ -46,3 +46,5 @@ Prefix the first line in your commit message with the subsystem the commit appli
   * build: the build and test system.
   * tests: unit or integration tests.
   * misc: anything that doesn't fit into the above categories.
+
+An example of a proper full commit message would be "rave: Fix crash in rave.events.emit() if registered event callback is not callable.".
