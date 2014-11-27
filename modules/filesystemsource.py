@@ -131,34 +131,34 @@ class FileSystemSource:
             raise fs.FileNotFound(filename)
         return path.isdir(self._to_native_path(filename))
 
-    def open(self, filename, **kwargs):
+    def open(self, filename, *args, **kwargs):
         if not self.has(filename):
             raise fs.FileNotFound(filename)
         if not self.isfile(filename):
             raise fs.NotAFile(filename)
 
         native_path = self._to_native_path(filename)
-        return FileSystemFile(self.filesystem, native_path, **kwargs)
+        return FileSystemFile(self.filesystem, native_path, *args, **kwargs)
 
 
 class FileSystemFile(fs.File):
     """ A file on the actual file system. """
 
-    def __init__(self, filesystem, filename, **kwargs):
+    def __init__(self, filesystem, filename, *args, **kwargs):
         self.filesystem = filesystem
         self.filename = filename
         self._handle = None
         self._readable = None
         self._writable = None
         self._seekable = None
-        self._open(**kwargs)
+        self._open(*args, **kwargs)
 
     def __repr__(self):
         return '<{cls}[{file}]>'.format(cls=self.__class__.__name__, file=self.filename)
 
     @_translate_errors
-    def _open(self, **kwargs):
-        self._handle = builtins.open(self.filename, 'rb+', **kwargs)
+    def _open(self, *args, **kwargs):
+        self._handle = builtins.open(self.filename, *args, **kwargs)
 
     @_translate_errors
     def _in_mode(self, *modes):
