@@ -2,6 +2,7 @@
 import builtins
 import re
 import threading
+import io
 
 import rave.common
 import rave.log
@@ -23,11 +24,11 @@ class FileNotFound(FileNotFoundError, FileSystemError):
     pass
 class AccessDenied(PermissionError, FileSystemError):
     pass
-class FileNotReadable(PermissionError, FileSystemError):
+class FileNotReadable(PermissionError, io.UnsupportedOperation, FileSystemError):
     pass
-class FileNotWritable(PermissionError, FileSystemError):
+class FileNotWritable(PermissionError, io.UnsupportedOperation, FileSystemError):
     pass
-class FileNotSeekable(PermissionError, FileSystemError):
+class FileNotSeekable(PermissionError, io.UnsupportedOperation, FileSystemError):
     pass
 class FileClosed(BrokenPipeError, FileSystemError):
     pass
@@ -427,7 +428,7 @@ class FileSystem:
         return self.ROOT + self.join(*pieces, normalized=False)
 
 
-class File:
+class File(io.IOBase):
     """
     An open file in the virtual file system.
     Subclasses are expected to at least override the following:
@@ -477,11 +478,3 @@ class File:
     def tell(self):
         """ Tell current file position. May raise `FileNotSeekable` if this file can't be seeked in. """
         raise FileNotSeekable(self)
-
-    def __enter__(self):
-        """ Enter context management environment. """
-        return self
-
-    def __exit__(self, exctype, excvalue, exctraceback):
-        """ Leave context management environment. """
-        self.close()
