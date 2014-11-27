@@ -6,9 +6,13 @@ __version_info__ = (0, 1, 0)
 __author__ = 'rave developers and contributors'
 __license__ = 'BSD'
 
+from . import common
 from . import log
-from . import bootstrap
+from . import events
 from . import execution
 from . import filesystem
 from . import loader
+from . import modularity
+from . import bootstrap
 from . import game
+from . import backends

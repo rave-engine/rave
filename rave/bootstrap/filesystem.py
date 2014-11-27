@@ -6,6 +6,8 @@ This will load the FileSystemSource module from the file system and load the mod
 import os.path as path
 import importlib
 import rave.bootstrap
+import rave.game
+import rave.modularity
 
 
 MODULES = [ 'filesystemsource' ]
@@ -24,7 +26,9 @@ def bootstrap_modules():
     # Bootstrap modules.
     for module in MODULES:
         name = rave.bootstrap.MODULE_PACKAGE + '.' + module
-        importlib.import_module(name)
+        mod = importlib.import_module(name)
+        rave.modularity.register_module(mod)
+        rave.modularity.load_module(mod)
 
     # Reset import path.
     module_package.__path__ = []
@@ -40,6 +44,9 @@ def bootstrap_filesystem(filesystem):
     filesystem.mount(rave.bootstrap.ENGINE_MOUNT, fss.FileSystemSource(filesystem, ENGINE_PATH))
     filesystem.mount(rave.bootstrap.MODULE_MOUNT, fss.FileSystemSource(filesystem, MODULE_PATH))
     filesystem.mount(rave.bootstrap.COMMON_MOUNT, fss.FileSystemSource(filesystem, COMMON_PATH))
+
+def bootstrap_game(base):
+    return rave.game.Game(path.basename(base.rstrip('/\\')), base)
 
 def bootstrap_game_filesystem(game):
     """ Bootstrap the game. """

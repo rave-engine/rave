@@ -18,6 +18,7 @@ import importlib
 
 from rave import __version__
 import rave.loader
+import rave.modularity
 import rave.log
 import rave.game
 
@@ -61,7 +62,7 @@ def bootstrap_engine(bootstrapper=None):
 
         _log('Installing import hooks...')
         rave.loader.install_hook(ENGINE_PACKAGE, [ ENGINE_MOUNT ])
-        rave.loader.install_hook(MODULE_PACKAGE, [ MODULE_MOUNT ])
+        rave.loader.install_hook(MODULE_PACKAGE, [ MODULE_MOUNT ], cls=rave.modularity.ModuleLoader)
         rave.loader.install_hook(GAME_PACKAGE, [ GAME_MOUNT ])
 
         _log('Bootstrapping engine using {name} bootstrapper.', name=bootstrapper)
@@ -75,24 +76,28 @@ def bootstrap_engine(bootstrapper=None):
 
 def bootstrap_game(bootstrapper=None, base=None):
     """ Bootstrap the game with `base` as game base. """
-    game = rave.game.Game('Game', base)
-
     if not bootstrapper:
         bootstrapper = _find_game_bootstrapper(base)
 
     _log('Bootstrapping game using {name} bootstrapper.', name=bootstrapper)
     bootstrapper = importlib.import_module('rave.bootstrap.' + bootstrapper)
 
+    game = bootstrapper.bootstrap_game(base)
     with game.env:
         _log('Bootstrapping game file system...')
         bootstrapper.bootstrap_filesystem(game.fs)
         bootstrapper.bootstrap_game_filesystem(game)
 
+        # Import all modules to build dependency tree.
+        for mod in game.fs.listdir(MODULE_MOUNT):
+            if not mod.startswith('__') and (mod.endswith('.py') or game.fs.isdir(mod)):
+                __import__(MODULE_PACKAGE + '.' + mod.replace('.py', ''))
+
     return game
 
 def shutdown_game(game):
     """ Finalize and shut down game. """
-    _log('Shutting down game {}...', game.name)
+    _log('Shutting down game: {}...', game.name)
     with game.env:
         game.fs.clear()
 
