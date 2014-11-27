@@ -336,7 +336,7 @@ class FileSystem:
 
         self._build_cache()
 
-    def open(self, filename, **kwargs):
+    def open(self, filename, *args, **kwargs):
         """
         Open `filename` and return a corresponding `File` object. Will raise `FileNotFound` if the file was not found.
         Will only raise the error from the last attempted provider if multiple providers raise an error.
@@ -346,7 +346,7 @@ class FileSystem:
         filename = self.normalize(filename)
         for provider, localfile in self._providers_for_file(filename):
             try:
-                return provider.open(localfile, **kwargs)
+                return provider.open(localfile, *args, **kwargs)
             except FileNotFound:
                 continue
             except FileSystemError as e:
