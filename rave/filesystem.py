@@ -362,6 +362,9 @@ class FileSystem:
         error = None
 
         filename = self.normalize(filename)
+        if self.isdir(filename):
+            raise NotAFile(filename)
+
         for provider, localfile in self._providers_for_file(filename):
             try:
                 return provider.open(localfile, *args, **kwargs)
