@@ -49,6 +49,8 @@ def init_module(mod):
         _mark_initialized(mod)
 
 
+## Internal API.
+
 def _resolve_dependencies(mod, resolving=None):
     dependencies = []
     if resolving is None:
