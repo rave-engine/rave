@@ -410,7 +410,7 @@ class FileSystem:
     def basename(self, path):
         """ Return the filename part of the given `path`. """
         if path == self.ROOT:
-            return None
+            return ''
         path = self.normalize(path)
         return path.rsplit(self.PATH_SEPARATOR, 1)[1]
 
