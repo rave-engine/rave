@@ -51,7 +51,7 @@ class FileSystem:
     # Root.
     ROOT = '/'
     # Unnormalized path pattern.
-    BAD_PATH_PATTERN = re.compile(r'{0}\.*{0}'.format(PATH_SEPARATOR))
+    BAD_PATH_PATTERN = re.compile(r'(?:{0}{{2,}}|(?:{0}|^)\.+(?:{0}|$))'.format(PATH_SEPARATOR))
 
     def __init__(self):
         # Lock when rebuilding cache or modifying the file system.
