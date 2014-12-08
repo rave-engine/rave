@@ -460,7 +460,7 @@ class File(io.IOBase):
      - close()
      - read(amount=None) (if readable, raises FileNotReadable by default)
      - write(data) (if writable, raises FileNotWritable by default)
-     - seek(position, relative=True) (if seekable, raises FileNotSeekable by default)
+     - seek(position, mode) (if seekable, raises FileNotSeekable by default)
      - tell() (if seekable, raises FileNotSeekable by default)
     """
 
@@ -492,7 +492,7 @@ class File(io.IOBase):
         """ Write `data` to file. """
         raise FileNotWritable(self)
 
-    def seek(self, position, relative=True):
+    def seek(self, position, mode=os.SEEK_CUR):
         """ Seek in file. May raise `FileNotSeekable` if this file can't be seeked in. """
         raise FileNotSeekable(self)
 
