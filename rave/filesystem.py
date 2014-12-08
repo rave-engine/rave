@@ -1,8 +1,9 @@
 # rave's virtual file system.
-import builtins
+import os
+import io
 import re
 import threading
-import io
+import collections
 
 import rave.common
 import rave.log
@@ -252,8 +253,20 @@ class FileSystem:
                 else:
                     raise NotADirectory(subdir)
 
-            files = set()
+            files = { '/' }
+            to_process = collections.deque()
+            to_process.append(subdir)
 
+            while to_process:
+                target = to_process.popleft()
+
+                for entry in self._listing_cache[target]:
+                    path = self.join(target, entry)
+                    if self.isdir(path):
+                        to_process.append(path)
+                    files.add(path.replace(subdir, ''))
+
+            return files
         else:
             return set(self._file_cache)
 
