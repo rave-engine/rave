@@ -12,7 +12,7 @@ PRIORITY_NEUTRAL = 0
 ## Internals.
 
 _provisions = {}
-_provisioned = set()
+_provided = set()
 _initialized = set()
 
 
@@ -55,7 +55,7 @@ def _resolve_dependencies(mod, resolving=None):
         resolving = []
 
     for requirement in getattr(mod, '__requires__', []):
-        if requirement in resolving or _is_provisioned(requirement):
+        if requirement in resolving or _is_provided(requirement):
             continue
 
         resolving.append(requirement)
@@ -71,7 +71,7 @@ def _resolve_dependencies(mod, resolving=None):
             except ImportError:
                 resolving = old_resolving
             else:
-                _mark_provisioned(requirement)
+                _mark_provided(requirement)
                 break
         else:
             raise ImportError('Could not resolve dependency "{}" for module "{}".'.format(requirement, mod.__name__))
@@ -84,11 +84,11 @@ def _is_initialized(module):
 def _mark_initialized(module):
     _initialized.add(module)
 
-def _is_provisioned(provision):
-    return provision in _provisioned
+def _is_provided(provision):
+    return provision in _provided
 
-def _mark_provisioned(provision):
-    _provisioned.add(provision)
+def _mark_provided(provision):
+    _provided.add(provision)
 
 def _provision_candidates(provision):
     return _provisions.get(provision, [])
