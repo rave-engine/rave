@@ -118,7 +118,7 @@ class FileSystem:
         _log.debug('Caching {trans} for {pattern}...', trans=transformer, pattern=pattern.pattern)
 
         # Traverse paths to find matching files.
-        for file in self._file_cache:
+        for file in self._file_cache.copy():
             if not pattern.search(file):
                 continue
 
