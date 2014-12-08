@@ -215,3 +215,9 @@ def get(name, file=None):
         if file and _loggers[name].file != file:
             _loggers[name].file = file
     return _loggers[name]
+
+def set_level(level):
+    """ Set rave loggers log level. """
+    Logger.LEVEL = level
+    for logger in _loggers.values():
+        logger.level = level
