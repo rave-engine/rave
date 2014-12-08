@@ -210,7 +210,7 @@ class FileSystem:
             parentdir = self.ROOT
 
         # Mount as provider.
-        self._cache_add_provider(instance, parentdir)
+        self._build_provider_cache(instance, parentdir)
 
         if instance.consumes():
             # Remove file cache for now-consumed file.
