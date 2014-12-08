@@ -20,21 +20,21 @@ class NativeError(FileSystemError):
         super().__init__(filename, message=repr(parent))
         self.native_error = parent
 
-class FileNotFound(FileNotFoundError, FileSystemError):
+class FileNotFound(FileSystemError, FileNotFoundError):
     pass
-class AccessDenied(PermissionError, FileSystemError):
+class AccessDenied(FileSystemError, PermissionError):
     pass
-class FileNotReadable(PermissionError, io.UnsupportedOperation, FileSystemError):
+class FileNotReadable(FileSystemError, PermissionError, io.UnsupportedOperation):
     pass
-class FileNotWritable(PermissionError, io.UnsupportedOperation, FileSystemError):
+class FileNotWritable(FileSystemError, PermissionError, io.UnsupportedOperation):
     pass
-class FileNotSeekable(PermissionError, io.UnsupportedOperation, FileSystemError):
+class FileNotSeekable(FileSystemError, PermissionError, io.UnsupportedOperation):
     pass
-class FileClosed(BrokenPipeError, FileSystemError):
+class FileClosed(FileSystemError, BrokenPipeError):
     pass
-class NotAFile(IsADirectoryError, FileSystemError):
+class NotAFile(FileSystemError, IsADirectoryError):
     pass
-class NotADirectory(NotADirectoryError, FileSystemError):
+class NotADirectory(FileSystemError, NotADirectoryError):
     pass
 
 
