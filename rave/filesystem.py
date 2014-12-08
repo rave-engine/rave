@@ -233,7 +233,7 @@ class FileSystem:
             raise FileNotFound(path)
 
         for provider, mountpoint in reversed(self._file_cache[path]):
-           yield provider, self._local_file(mountpoint, path)
+            yield provider, self._local_file(mountpoint, path)
 
     def _local_file(self, root, path):
         if root == self.ROOT:
