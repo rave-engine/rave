@@ -126,13 +126,13 @@ class FileSystem:
             try:
                 handle = self.open(file)
             except:
-                _log.warning('Couldn\'t open {provider}:{path} for transformer {transformer}. Moving on...')
+                _log.warn('Couldn\'t open {path} for transformer {transformer}. Moving on...'.format(path=file, transformer=transformer))
                 continue
             self._cache_transformed_file(transformer, file, handle)
 
     def _cache_directory(self, provider, root, path):
         """ Add `path`, provided by `provider`, as a directory to the file cache. """
-        _log.debug('Caching directory path {path} <- {provider}...', path=path, provider=provider)
+        _log.debug('Caching directory: {path} <- {provider}...', path=path, provider=provider)
 
         with self._lock:
             self._listing_cache.setdefault(path, set())
@@ -140,7 +140,8 @@ class FileSystem:
 
     def _cache_file(self, provider, root, path):
         """ Add `path`, provided by `provider`, as a file to the file cache. """
-        _log.debug('Caching file path {path} <- {provider}...', path=path, provider=provider)
+        _log.debug('Caching file: {path} <- {provider}...', path=path, provider=provider)
+        localpath = self._local_file(root, path)
 
         for pattern, transformers in self._transformers.items():
             if not pattern.search(path):
@@ -149,9 +150,9 @@ class FileSystem:
             consumed = False
             for transformer in transformers:
                 try:
-                    handle = provider.open(path)
-                except:
-                    _log.warning('Couldn\'t open {provider}:{path} for transformer {transformer}. Moving on...')
+                    handle = provider.open(localpath)
+                except Exception as e:
+                    _log.warn('Couldn\'t open {provider}:{path} for transformer {transformer}. Error: {err}', provider=provider, path=localpath, transformer=transformer, err=e)
                     continue
 
                 consumed = self._cache_transformed_file(transformer, path, handle)
@@ -194,12 +195,12 @@ class FileSystem:
         try:
             instance = transformer(path, handle)
         except Exception as e:
-            _log.warn('Error while transforming {path} with {tranformer}: {err}', path=path, transformer=transformer, err=e)
+            _log.warn('Error while transforming {path} with {transformer}: {err}', path=path, transformer=transformer, err=e)
             return False
 
         if not instance.valid():
             return False
-        _log.debug('Caching transformed file {path} <- {trans}...', path=path, trans=transformer)
+        _log.debug('Caching transformed file: {path} <- {trans}...', path=path, trans=transformer)
 
         # Determine root directory of files.
         if instance.relative():
@@ -231,8 +232,12 @@ class FileSystem:
             raise FileNotFound(path)
 
         for provider, mountpoint in reversed(self._file_cache[path]):
-            localfile = path[len(mountpoint):]
-            yield provider, localfile
+           yield provider, self._local_file(mountpoint, path)
+
+    def _local_file(self, root, path):
+        if root == self.ROOT:
+            return path
+        return path[len(root):]
 
     def list(self, subdir=None):
         """ List all files and directories in the root file system, or `subdir` if given, recursively. """
