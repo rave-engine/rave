@@ -295,7 +295,7 @@ class FileSystem:
         `provider` must be an object satisfying the following API:
          - list(): return a list of all file names (including folders) this provider can provide.
          - has(filename): return whether this provider can open given file.
-         - open(fs, filename, **kwargs): open a file, has to raise one of the subclasses of `FileSystemError` on error, else return a subclass of `File`.
+         - open(filename, **kwargs): open a file, has to raise one of the subclasses of `FileSystemError` on error, else return a subclass of `File`.
          - isfile(filename): check if the given file is a file, should raise applicable `FileSystemError` subclass if applicable,
              except for NotAFile/NotADirectory, or return a boolean.
          - isdir(filename): check if the given file is a directory, should raise applicable `FileSystemError` subclass if applicable,
@@ -501,3 +501,24 @@ class File(io.IOBase):
     def tell(self):
         """ Tell current file position. May raise `FileNotSeekable` if this file can't be seeked in. """
         raise FileNotSeekable(self)
+
+
+class FileSystemProvider:
+    """ A provider to mount a filesystem within another filesystem. """
+    def __init__(self, fs):
+        self.fs = fs
+
+    def list(self):
+        return self.fs.list()
+
+    def open(self, filename, *args, **kwargs):
+        return self.fs.open(filename, *args, **kwargs)
+
+    def has(self, filename):
+        return self.fs.isfile(filename)
+
+    def isfile(self, filename):
+        return self.fs.isfile(filename)
+
+    def isdir(self, filename):
+        return self.fs.isdir(filename)

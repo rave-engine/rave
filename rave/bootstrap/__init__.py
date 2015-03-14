@@ -18,6 +18,7 @@ import importlib
 
 from rave import __version__
 import rave.loader
+import rave.filesystem
 import rave.modularity
 import rave.log
 import rave.game
@@ -90,7 +91,7 @@ def bootstrap_game(bootstrapper=None, base=None):
     game = bootstrapper.bootstrap_game(base)
     with game.env:
         _log.debug('Bootstrapping game file system...')
-        bootstrapper.bootstrap_filesystem(game.fs)
+        game.fs.mount('/', rave.filesystem.FileSystemProvider(rave.game.engine.fs))
         bootstrapper.bootstrap_game_filesystem(game)
 
         # Import all modules to build dependency tree.
