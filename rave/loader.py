@@ -131,6 +131,10 @@ class VFSImporter(importlib.abc.MetaPathFinder, importlib.abc.SourceLoader):
         game = rave.game.current()
         if game and not hasattr(module, '__path__') and self.is_package(module.__name__):
             module.__path__ = game.fs.dirname(self._modules[game][module.__name__])
+        # Python's default SourceLoader also sets __package__ incorrectly if it's a package. Set it right too.
+        if self.is_package(module.__name__):
+            module.__package__ = module.__name__
+
         super().exec_module(module)
 
     def get_filename(self, name):
