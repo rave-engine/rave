@@ -121,8 +121,17 @@ class VFSImporter(importlib.abc.MetaPathFinder, importlib.abc.SourceLoader):
 
     def _register_module(self, game, name, path):
         """ Register module as loadable through this loader. """
-        self._modules.setdefault(current, {})
-        self._modules[current][name] = path
+        self._modules.setdefault(game, {})
+        self._modules[game][name] = path
+
+    def exec_module(self, module):
+        # Python's default SourceLoader implementation seems to have a bug where it doesn't
+        # set __path__ on modules that would be packages, and thus packages can't actually be
+        # used as packages, since the low-level importlib bootstrap code will error out. Set it right.
+        game = rave.game.current()
+        if game and not hasattr(module, '__path__') and self.is_package(module.__name__):
+            module.__path__ = game.fs.dirname(self._modules[game][module.__name__])
+        super().exec_module(module)
 
     def get_filename(self, name):
         game = rave.game.current()
