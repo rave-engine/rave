@@ -4,4 +4,4 @@ from pytest import fixture
 
 @fixture
 def bus():
-	return events.EventBus()
+    return events.EventBus()

@@ -46,7 +46,8 @@ def bootstrap_filesystem(filesystem):
     filesystem.mount(rave.bootstrap.COMMON_MOUNT, fss.FileSystemSource(filesystem, COMMON_PATH))
 
 def bootstrap_game(base):
-    return rave.game.Game(path.basename(base.rstrip('/\\')), base)
+    name = path.basename(base.rstrip('/\\'))
+    return rave.game.Game(name, base)
 
 def bootstrap_game_filesystem(game):
     """ Bootstrap the game. """

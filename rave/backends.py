@@ -14,7 +14,6 @@ Any code that uses `register(category, backend)` has to implement the following 
 Code that needs access to a certain backend can then use `select(category)` ensure a backend is selected for the given category,
 and from then on use `rave.backends.<category>` to access the selected backend.
 """
-import sys
 import heapq
 import rave.log
 import rave.game
@@ -107,7 +106,8 @@ def register(category, backend):
     """
     priority = backend.PRIORITY
     if priority < PRIORITY_MIN or priority > PRIORITY_MAX:
-        raise ValueError('Priority for backend {backend} has to lie between {min} and {max}'.format(backend=backend.__name__, min=PRIORITY_MIN, max=PRIORITY_MAX))
+        raise ValueError('Priority for backend {backend} has to lie between {min} and {max}'
+                 .format(backend=backend.__name__, min=PRIORITY_MIN, max=PRIORITY_MAX))
 
     _insert_backend(category, backend)
     _log.debug('Registered {cat} backend: {backend}', cat=category, backend=backend.__name__)
@@ -119,6 +119,7 @@ def select(category):
     """
     if not _has_selected_backend(category):
         _log.debug('Selecting {cat} backend...', cat=category)
+        selected = None
 
         # Iterate through sorted list and find a proper backend.
         for backend in _backends_for(category):
@@ -127,6 +128,7 @@ def select(category):
 
             if available:
                 if _select_backend(category, backend):
+                    selected = backend
                     break
                 else:
                     _log.warn('{backend} available but initialization failed. Moving on.', backend=backend.__name__)
@@ -134,6 +136,6 @@ def select(category):
             _log.err('No {cat} backends available.', cat=category)
             return None
 
-        _log('Selected {cat} backend: {backend}', cat=category, backend=backend.__name__)
-    
+        _log('Selected {cat} backend: {backend}', cat=category, backend=selected.__name__)
+
     return _selected_backend(category)

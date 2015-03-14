@@ -1,7 +1,7 @@
+"""
+rave entry point. Parse command line arguments and launch game.
+"""
 import argparse
-import sys
-from os import path
-
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='A modular and extensible visual novel engine.', prog='rave')

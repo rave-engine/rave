@@ -53,38 +53,38 @@ def bootstrap_engine(bootstrapper=None):
     """ Bootstrap the engine. """
     _log('This is rave v{ver}.', ver=__version__)
 
-    _log.debug('Creating engine game...')
     rave.game.engine = rave.game.Game('<engine>')
 
     with rave.game.engine.env:
-        if not bootstrapper:
-            bootstrapper = _find_engine_bootstrapper()
-
-        _log('Installing import hooks...')
+        _log('Installing hooks...')
         rave.loader.install_hook(ENGINE_PACKAGE, [ ENGINE_MOUNT ])
         rave.loader.install_hook(MODULE_PACKAGE, [ MODULE_MOUNT ], cls=rave.modularity.ModuleLoader)
         rave.loader.install_hook(GAME_PACKAGE, [ GAME_MOUNT ])
 
-        _log('Bootstrapping engine using {name} bootstrapper.', name=bootstrapper)
+        if not bootstrapper:
+            bootstrapper = _find_engine_bootstrapper()
+
+        _log('Engine bootstrapper: {name}', name=bootstrapper)
         bootstrapper = importlib.import_module('rave.bootstrap.' + bootstrapper)
 
         # We bootstrap vital modules first that are likely needed to bootstrap the file system.
-        _log('Bootstrapping engine modules...')
+        _log.debug('Bootstrapping engine modules...')
         bootstrapper.bootstrap_modules()
 
     return rave.game.engine
+
 
 def bootstrap_game(bootstrapper=None, base=None):
     """ Bootstrap the game with `base` as game base. """
     if not bootstrapper:
         bootstrapper = _find_game_bootstrapper(base)
 
-    _log('Bootstrapping game using {name} bootstrapper.', name=bootstrapper)
+    _log('Game bootstrapper: {name}', name=bootstrapper)
     bootstrapper = importlib.import_module('rave.bootstrap.' + bootstrapper)
 
     game = bootstrapper.bootstrap_game(base)
     with game.env:
-        _log('Bootstrapping game file system...')
+        _log.debug('Bootstrapping game file system...')
         bootstrapper.bootstrap_filesystem(game.fs)
         bootstrapper.bootstrap_game_filesystem(game)
 
@@ -93,7 +93,9 @@ def bootstrap_game(bootstrapper=None, base=None):
             if not mod.startswith('__') and (mod.endswith('.py') or game.fs.isdir(mod)):
                 __import__(MODULE_PACKAGE + '.' + mod.replace('.py', ''))
 
+    _log('Game bootstrapped.')
     return game
+
 
 def shutdown_game(game):
     """ Finalize and shut down game. """
@@ -106,4 +108,5 @@ def shutdown():
     _log('Shutting down engine...')
     shutdown_game(rave.game.engine)
 
+    _log('Removing hooks...')
     rave.loader.remove_hooks()

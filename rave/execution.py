@@ -1,7 +1,6 @@
 """
 rave Python execution environments.
 """
-import sys
 import threading
 import types
 
@@ -24,9 +23,9 @@ def _identifier():
 def current():
     """ Get current execution environment object for whatever parallel mechanism is used, or None if no environment is active. """
     with _lock:
-        id = _identifier()
+        ident = _identifier()
 
-        envs = _current_envs.get(id)
+        envs = _current_envs.get(ident)
         if envs:
             return envs[-1]
         return None
@@ -34,28 +33,28 @@ def current():
 def push(env):
     """ Set current execution environment for whatever parallel mechanism is used. """
     with _lock:
-        id = _identifier()
+        ident = _identifier()
 
-        _current_envs.setdefault(id, [])
-        if _current_envs[id]:
-            current = _current_envs[id][-1]
+        _current_envs.setdefault(ident, [])
+        if _current_envs[ident]:
+            current = _current_envs[ident][-1]
             current.deactivate()
 
-        _current_envs[id].append(env)
+        _current_envs[ident].append(env)
         env.activate()
 
 def pop():
     """ Clear the current execution environment for whatever parallel mechanism is used. """
     with _lock:
-        id = _identifier()
+        ident = _identifier()
 
-        envs = _current_envs.get(id)
+        envs = _current_envs.get(ident)
         if envs:
             env = envs.pop()
             env.deactivate()
 
-            if _current_envs[id]:
-                current = _current_envs[id][-1]
+            if _current_envs[ident]:
+                current = _current_envs[ident][-1]
                 current.activate()
 
             return env
@@ -97,7 +96,7 @@ class ExecutionEnvironment:
 
     def run(self, code, filename='<unknown>'):
         """ Run code in this environment. """
-        with environment(self.env):
+        with self:
             if not isinstance(code, types.CodeType):
                 code = self.compile(code, filename)
 

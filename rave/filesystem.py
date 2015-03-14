@@ -82,7 +82,7 @@ class FileSystem:
 
     def _build_cache(self):
         """ Rebuild internal file cache. This will make looking up files, errors notwithstanding, an O(1) lookup operation. """
-        _log('Building cache...')
+        _log.debug('Building cache...')
 
         with self._lock:
             self._file_cache = { self.ROOT: [] }
@@ -153,7 +153,8 @@ class FileSystem:
                 try:
                     handle = provider.open(localpath)
                 except Exception as e:
-                    _log.warn('Couldn\'t open {provider}:{path} for transformer {transformer}. Error: {err}', provider=provider, path=localpath, transformer=transformer, err=e)
+                    _log.warn('Couldn\'t open {provider}:{path} for transformer {transformer}. Error: {err}',
+                              provider=provider, path=localpath, transformer=transformer, err=e)
                     continue
 
                 consumed = self._cache_transformed_file(transformer, path, handle)
@@ -329,7 +330,8 @@ class FileSystem:
         Add `transformer` as a transformer for files matching `pattern`.
 
         `transformer` has to be a class(!) satisfying the provider API (see `mount`), plus the following API:
-         - __init__(filename, handle): initialize object, can raise any kind of error if the file is invalid. `handle` is a `File` object pointing to the opened file.
+         - __init__(filename, handle): initialize object, can raise any kind of error if the file is invalid.
+           `handle` is a `File` object pointing to the opened file.
          - valid(): return whether the file is valid according to the format this transformer parses.
          - consumes(): return whether the source file should be retained in the file system.
          - relative(): return whether files exposed by this transformer should be relative to the path of the source file or absolute.
