@@ -28,7 +28,7 @@ def bootstrap_modules():
         name = rave.bootstrap.MODULE_PACKAGE + '.' + module
         mod = importlib.import_module(name)
         rave.modularity.register_module(mod)
-        rave.modularity.load_module(mod)
+        rave.modularity.load_module(mod.__name__)
 
     # Reset import path.
     module_package.__path__ = []

@@ -1,4 +1,5 @@
 import heapq
+import rave.log
 import rave.loader
 
 
@@ -11,6 +12,7 @@ PRIORITY_NEUTRAL = 0
 
 ## Internals.
 
+_log = rave.log.get(__name__)
 _loading_stack = []
 _requirements = {}
 _provisions = {}
@@ -62,17 +64,20 @@ def register_module(module):
         _requirements.setdefault(module.__name__, [])
         _requirements[module.__name__].extend(module.__requires__)
 
-def load_module(mod):
-    for dependency in reversed(_resolve_dependencies(mod)):
+def load_module(name):
+    module = _available[name]
+    for dependency in reversed(_resolve_dependencies(module)):
+        _log('Loading module: {} (dependency)', dependency.__name__)
         init_module(dependency)
 
-    init_module(mod)
+    _log('Loading module: {}', name)
+    init_module(module)
 
-def init_module(mod):
-    if not _is_initialized(mod):
-        if hasattr(mod, 'init'):
-            mod.init()
-        _mark_initialized(mod)
+def init_module(module):
+    if not _is_initialized(module):
+        if hasattr(module, 'init'):
+            module.init()
+        _mark_initialized(module)
 
 
 ## Internal API.
@@ -119,5 +124,5 @@ def _mark_provided(provision):
 
 def _provision_candidates(provision):
     if provision in _available:
-        return [provision] + _provisions.get(provision, [])
+        return [(provision, 0, _available[provision])] + _provisions.get(provision, [])
     return _provisions.get(provision, [])
