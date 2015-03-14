@@ -84,28 +84,28 @@ class VFSImporter(importlib.abc.MetaPathFinder, importlib.abc.SourceLoader):
             candidates = []
         else:
             # Do we have a file system to load from?
-            current = rave.game.current()
-            if not current:
+            game = rave.game.current()
+            if not game:
                 return None
 
             # Make relative path and find module.
-            rel_path = name.replace(self.package + '.', '').replace('.', current.fs.PATH_SEPARATOR)
+            rel_path = name.replace(self.package + '.', '').replace('.', game.fs.PATH_SEPARATOR)
 
             for search_path in self.search_paths:
-                base_name = current.fs.join(search_path, rel_path)
+                base_name = game.fs.join(search_path, rel_path)
                 extensions = importlib.machinery.SOURCE_SUFFIXES + importlib.machinery.BYTECODE_SUFFIXES
                 available = []
 
                 # Single-file modules.
                 candidates = [ base_name + ext for ext in extensions ]
-                available.extend(path for path in candidates if current.fs.isfile(path))
+                available.extend(path for path in candidates if game.fs.isfile(path))
                 # Packages.
-                candidates = [ current.fs.join(base_name, '__init__' + ext) for ext in extensions ]
-                available.extend(path for path in candidates if current.fs.isfile(path))
+                candidates = [ game.fs.join(base_name, '__init__' + ext) for ext in extensions ]
+                available.extend(path for path in candidates if game.fs.isfile(path))
 
                 # Find first available candidate.
                 for path in available:
-                    self._register_module(current, name, path)
+                    self._register_module(game, name, path)
 
                     loader = self
                     origin = path
@@ -119,42 +119,42 @@ class VFSImporter(importlib.abc.MetaPathFinder, importlib.abc.SourceLoader):
             _log.debug('Loading {pkg} from {path}. (candidates: {available})', pkg=name, path=origin, available=candidates)
         return importlib.machinery.ModuleSpec(name, loader, origin=origin)
 
-    def _register_module(self, current, name, path):
+    def _register_module(self, game, name, path):
         """ Register module as loadable through this loader. """
         self._modules.setdefault(current, {})
         self._modules[current][name] = path
 
     def get_filename(self, name):
-        current = rave.game.current()
-        if not current or current not in self._modules or name not in self._modules[current]:
+        game = rave.game.current()
+        if not game or game not in self._modules or name not in self._modules[game]:
             raise ImportError('Unknown module for this loader.')
-        return self._modules[current][name]
+        return self._modules[game][name]
 
     def get_data(self, path):
-        current = rave.game.current()
-        if not current:
+        game = rave.game.current()
+        if not game:
             raise BrokenPipeError('No game file system to load module from.')
-        with current.fs.open(path, 'rb') as f:
+        with game.fs.open(path, 'rb') as f:
             return f.read()
 
     def set_data(self, path, data):
-        current = rave.game.current()
-        if not current:
+        game = rave.game.current()
+        if not game:
             # Silence errors.
             return
 
         try:
-            with current.fs.open(path, 'wb') as f:
+            with game.fs.open(path, 'wb') as f:
                 f.write(data)
         except rave.filesystem.FileSystemError:
             # Silence errors.
             pass
 
     def path_stats(self, path):
-        current = rave.game.current()
-        if not current:
+        game = rave.game.current()
+        if not game:
             raise BrokenPipeError('No game file system to get module info from.')
-        if not current.fs.isfile(path):
+        if not game.fs.isfile(path):
             raise FileNotFoundError(path)
 
         return { 'mtime': 0 }
