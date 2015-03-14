@@ -96,7 +96,7 @@ def bootstrap_game(bootstrapper=None, base=None):
 
         # Import all modules to build dependency tree.
         for mod in game.fs.listdir(MODULE_MOUNT):
-            if not mod.startswith('__') and (mod.endswith('.py') or game.fs.isdir(mod)):
+            if not mod.startswith('__') and (mod.endswith('.py') or game.fs.isdir(game.fs.join(MODULE_MOUNT, mod))):
                 try:
                     __import__(MODULE_PACKAGE + '.' + mod.replace('.py', ''))
                 except Exception as e:
