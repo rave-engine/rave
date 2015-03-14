@@ -33,7 +33,7 @@ class EmptyPackageLoader(importlib.abc.InspectLoader):
         self._packages.add(package)
 
     def exec_module(self, module):
-        """ Execute module code. Python 3.4+ API for module loading. """
+        """ Execute module code. """
         if module.__name__ not in self._packages:
             raise ImportError('Incorrect module name for this loader.')
         # Ensure it's a package.
@@ -81,6 +81,7 @@ class VFSImporter(importlib.abc.MetaPathFinder, importlib.abc.SourceLoader):
             # Use empty package holder module.
             loader = self._package_loader
             origin = None
+            package = True
             candidates = []
         else:
             # Do we have a file system to load from?
@@ -109,6 +110,7 @@ class VFSImporter(importlib.abc.MetaPathFinder, importlib.abc.SourceLoader):
 
                     loader = self
                     origin = path
+                    package = path.rsplit('.', 1)[0].endswith('__init__')
                     candidates = available
                     break
                 else:
@@ -117,24 +119,12 @@ class VFSImporter(importlib.abc.MetaPathFinder, importlib.abc.SourceLoader):
 
         if origin:
             _log.debug('Loading {pkg} from {path}. (candidates: {available})', pkg=name, path=origin, available=candidates)
-        return importlib.machinery.ModuleSpec(name, loader, origin=origin)
+        return importlib.machinery.ModuleSpec(name, loader, origin=origin, is_package=package)
 
     def _register_module(self, game, name, path):
         """ Register module as loadable through this loader. """
         self._modules.setdefault(game, {})
         self._modules[game][name] = path
-
-    def exec_module(self, module):
-        if self.is_package(module.__name__):
-            # Python's default SourceLoader implementation seems to have a bug where it doesn't
-            # set __path__ on modules that would be packages, and thus packages can't actually be
-            # used as packages, since the low-level importlib bootstrap code will error out. Set it right.
-            if not hasattr(module, '__path__'):
-                module.__path__ = [ self.get_filename(module.__name__) ]
-            # Python's default SourceLoader also sets __package__ incorrectly if it's a package. Set it right too.
-            module.__package__ = module.__name__
-
-        super().exec_module(module)
 
     def get_filename(self, name):
         game = rave.game.current()
