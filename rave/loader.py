@@ -90,7 +90,6 @@ class VFSImporter(importlib.abc.MetaPathFinder, importlib.abc.SourceLoader):
 
             # Make relative path and find module.
             rel_path = name.replace(self.package + '.', '').replace('.', current.fs.PATH_SEPARATOR)
-            _log.debug('Searching for {pkg}...', pkg=name)
 
             for search_path in self.search_paths:
                 base_name = current.fs.join(search_path, rel_path)

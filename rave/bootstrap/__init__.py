@@ -64,7 +64,7 @@ def bootstrap_engine(bootstrapper=None):
         if not bootstrapper:
             bootstrapper = _find_engine_bootstrapper()
 
-        _log('Engine bootstrapper: {name}', name=bootstrapper)
+        _log('Selected engine bootstrapper: {name}', name=bootstrapper)
         bootstrapper = importlib.import_module('rave.bootstrap.' + bootstrapper)
 
         # We bootstrap vital modules first that are likely needed to bootstrap the file system.
@@ -84,7 +84,7 @@ def bootstrap_game(bootstrapper=None, base=None):
     if not bootstrapper:
         bootstrapper = _find_game_bootstrapper(base)
 
-    _log('Game bootstrapper: {name}', name=bootstrapper)
+    _log('Selected game bootstrapper: {name}', name=bootstrapper)
     bootstrapper = importlib.import_module('rave.bootstrap.' + bootstrapper)
 
     game = bootstrapper.bootstrap_game(base)
@@ -101,7 +101,7 @@ def bootstrap_game(bootstrapper=None, base=None):
                 except Exception as e:
                     _log.exception(e, "Could not import module: {}", mod)
 
-    _log('Game bootstrapped.')
+    _log('Game bootstrapped: {}', game.name)
     return game
 
 
@@ -114,7 +114,8 @@ def shutdown_game(game):
 def shutdown():
     """ Finalize and shutdown engine. """
     _log('Shutting down engine...')
-    shutdown_game(rave.game.engine)
+    with rave.game.engine.env:
+        _log('Removing hooks...')
+        rave.loader.remove_hooks()
 
-    _log('Removing hooks...')
-    rave.loader.remove_hooks()
+        rave.game.engine.fs.clear()

@@ -23,6 +23,6 @@ def main():
             game = rave.bootstrap.bootstrap_game(args.game_bootstrapper, args.game)
             rave.bootstrap.shutdown_game(game)
 
-        rave.bootstrap.shutdown()
+    rave.bootstrap.shutdown()
 
 main()
