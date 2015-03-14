@@ -71,6 +71,11 @@ def bootstrap_engine(bootstrapper=None):
         _log.debug('Bootstrapping engine modules...')
         bootstrapper.bootstrap_modules()
 
+        # Now bootstrap the engine file system.
+        _log.debug('Bootstrapping engine file system...')
+        bootstrapper.bootstrap_filesystem(rave.game.engine.fs)
+
+    _log('Engine bootstrapped.')
     return rave.game.engine
 
 
