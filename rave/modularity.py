@@ -10,16 +10,6 @@ PRIORITY_MAX = 100
 PRIORITY_NEUTRAL = 0
 
 
-## Internals.
-
-_log = rave.log.get(__name__)
-_loading_stack = []
-_requirements = {}
-_provisions = {}
-_available = {}
-_initialized = set()
-
-
 ## API.
 
 class ModuleLoader(rave.loader.VFSImporter):
@@ -86,13 +76,21 @@ def load_module(name):
     init_module(module)
 
 def init_module(module):
-    if not _is_initialized(module):
+    if module not in _loaded:
         if hasattr(module, 'load'):
             module.load()
-        _mark_initialized(module)
+        _loaded.add(module)
 
 
-## Internal API.
+## Internals.
+
+_log = rave.log.get(__name__)
+_loading_stack = []
+_requirements = {}
+_provisions = {}
+_available = {}
+_loaded = set()
+
 
 def _resolve_dependencies(mod, resolving=None, provided=None, blacklist=None):
     dependencies = []
@@ -110,7 +108,7 @@ def _resolve_dependencies(mod, resolving=None, provided=None, blacklist=None):
         resolving.add(requirement)
 
         errors = []
-        for _, _, provider in _provision_candidates(requirement):
+        for _, _, provider in _provision_candidates_for(requirement):
             if provider in blacklist:
                 errors.append('"{}" candidate "{}" is blacklisted ({})'.format(requirement, provider.__name__, blacklist[provider]))
                 continue
@@ -147,13 +145,8 @@ def _resolve_dependencies(mod, resolving=None, provided=None, blacklist=None):
 
     return dependencies
 
-def _is_initialized(module):
-    return module in _initialized
-
-def _mark_initialized(module):
-    _initialized.add(module)
-
-def _provision_candidates(provision):
+def _provision_candidates_for(provision):
+    # If we are directly referring to a module, put that at the front.
     if provision in _available:
         return [(0, 0, _available[provision])] + sorted(_provisions.get(provision, []))
     return sorted(_provisions.get(provision, []))
