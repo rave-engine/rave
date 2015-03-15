@@ -87,8 +87,8 @@ def load_module(name):
 
 def init_module(module):
     if not _is_initialized(module):
-        if hasattr(module, 'init'):
-            module.init()
+        if hasattr(module, 'load'):
+            module.load()
         _mark_initialized(module)
 
 
