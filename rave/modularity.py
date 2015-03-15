@@ -139,7 +139,7 @@ def _resolve_dependencies(mod, resolving=None, provided=None, blacklist=None):
                 break
         else:
             # Build useful error message.
-            msg = 'Could not resolve dependency "{}" for module "{}".'.format(requirement, mod.__name__)
+            msg = 'Could not resolve dependency "{}" for module "{}": no viable candidates.'.format(requirement, mod.__name__)
             for error in errors:
                 for message in str(error).splitlines():
                     msg += '\n   {}'.format(message)
