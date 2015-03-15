@@ -16,7 +16,6 @@ _log = rave.log.get(__name__)
 _loading_stack = []
 _requirements = {}
 _provisions = {}
-_provided = set()
 _available = {}
 _initialized = set()
 
@@ -66,9 +65,22 @@ def register_module(module):
 
 def load_module(name):
     module = _available[name]
-    for dependency in reversed(_resolve_dependencies(module)):
-        _log('Loading module: {} (dependency)', dependency.__name__)
-        init_module(dependency)
+    blacklist = {}
+
+    while True:
+        dependencies = _resolve_dependencies(module, blacklist=blacklist.copy())
+        for dependency in reversed(dependencies):
+            _log('Loading module: {} (dependency)', dependency.__name__)
+            try:
+                init_module(dependency)
+            except Exception as e:
+                blacklist[dependency] = 'initialization failed: {}'.format(e)
+                _log.warn('Loading failed, re-generating dependencies...')
+                # Go back to start of while-loop by breaking out of for-loop.
+                break
+        else:
+            # All dependencies loaded successfully.
+            break
 
     _log('Loading module: {}', name)
     init_module(module)
@@ -82,31 +94,56 @@ def init_module(module):
 
 ## Internal API.
 
-def _resolve_dependencies(mod, resolving=None):
+def _resolve_dependencies(mod, resolving=None, provided=None, blacklist=None):
     dependencies = []
     if resolving is None:
-        resolving = []
+        resolving = set()
+    if provided is None:
+        provided = set()
+    if blacklist is None:
+        blacklist = {}
 
     for requirement in _requirements.get(mod.__name__, []):
-        if requirement in resolving or _is_provided(requirement):
+        # Don't bother with stuff we already handled.
+        if requirement in resolving or requirement in provided:
             continue
+        resolving.add(requirement)
 
+        errors = []
         for _, _, provider in _provision_candidates(requirement):
-            old_resolving = resolving[:]
-            try:
-                subdependencies = _resolve_dependencies(provider, resolving)
+            if provider in blacklist:
+                errors.append('"{}" candidate "{}" is blacklisted ({})'.format(requirement, provider.__name__, blacklist[provider]))
+                continue
 
+            # Invocations add to the resolving set since it's pass-by-reference, which is undesired if the resolve ends up failing.
+            old_resolving = resolving.copy()
+            old_provided = provided.copy()
+            try:
+                subdependencies = _resolve_dependencies(provider, resolving, provided, blacklist)
+            except ImportError as e:
+                blacklist[provider] = 'import failed: {}'.format(e)
+                errors.append(e)
+                # Restore progress from earlier.
+                resolving = old_resolving
+                provided = old_provided
+            else:
+                # Add winning candidate to the list, and its dependencies.
                 dependencies.append(provider)
                 for dependency in subdependencies:
-                    if dependency not in dependencies:
-                        dependencies.append(dependency)
-            except ImportError:
-                resolving = old_resolving
-            else:
-                _mark_provided(requirement)
+                    # Move dependency to the back if needed, so it will get loaded earlier.
+                    if dependency in dependencies:
+                        dependencies.remove(dependency)
+                    dependencies.append(dependency)
+
+                provided.add(provider)
                 break
         else:
-            raise ImportError('Could not resolve dependency "{}" for module "{}".'.format(requirement, mod.__name__))
+            # Build useful error message.
+            msg = 'Could not resolve dependency "{}" for module "{}".'.format(requirement, mod.__name__)
+            for error in errors:
+                for message in str(error).splitlines():
+                    msg += '\n   {}'.format(message)
+            raise ImportError(msg)
 
     return dependencies
 
@@ -116,13 +153,7 @@ def _is_initialized(module):
 def _mark_initialized(module):
     _initialized.add(module)
 
-def _is_provided(provision):
-    return provision in _provided
-
-def _mark_provided(provision):
-    _provided.add(provision)
-
 def _provision_candidates(provision):
     if provision in _available:
-        return [(provision, 0, _available[provision])] + _provisions.get(provision, [])
+        return [(0, 0, _available[provision])] + _provisions.get(provision, [])
     return _provisions.get(provision, [])
