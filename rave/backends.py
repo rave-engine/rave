@@ -6,136 +6,120 @@ An example of reasoning for this would be that tere's a lot of ways you'd implem
 for which modules would provide better pluggable functionality.
 
 Any code that uses `register(category, backend)` has to implement the following API:
-- PRIORITY: a constant between `PRIORITY_MIN` and `PRIORITY_MAX`, where `PRIORITY_MIN` equals a last resort backend,
+- BACKEND_PRIORITY: a constant between `PRIORITY_MIN` and `PRIORITY_MAX`, where `PRIORITY_MIN` equals a last resort backend,
     `PRIORITY_NEUTRAL` equals a neutral priority, and `PRIORITY_MAX` equals the most important backend.
-- available(): a function that returns whether or not the backend is available for this platform.
-- load(): a callback called when this module has decided this backend.
+- backend_available(category): a function that returns whether or not the backend is available for this platform.
+- backend_load(category): a callback called when this module has decided this backend.
 
 Code that needs access to a certain backend can then use `select(category)` ensure a backend is selected for the given category,
 and from then on use `rave.backends.<category>` to access the selected backend.
 """
 import heapq
 import rave.log
-import rave.game
 
 
-## Constants.
+## Backend categories.
 
+BACKEND_AUDIO = 1
+BACKEND_VIDEO = 2
+BACKEND_INPUT = 3
+
+# Backends for which only one choice is appropriate.
+SINGLE_BACKEND_CATEGORIES = [ BACKEND_AUDIO, BACKEND_VIDEO ]
+# Backend for whuch multiple choices can be loaded at once.
+MULTIPLE_BACKEND_CATEGORIES = [ BACKEND_INPUT ]
+# All backend categories.
+ALL_CATEGORIES = SINGLE_BACKEND_CATEGORIES + MULTIPLE_BACKEND_CATEGORIES
+# Backend to strings.
+CATEGORY_NAMES = {
+    BACKEND_AUDIO: 'audio',
+    BACKEND_VIDEO: 'video',
+    BACKEND_INPUT: 'input'
+}
+
+# Priorities.
 PRIORITY_MIN = -100
 PRIORITY_MAX = 100
 PRIORITY_NEUTRAL = 0
 
 
-## Internal variables.
-
-_log = rave.log.get(__name__)
-_available_backends = {}
-_selected_backends = {}
-
-
-## Internal functions.
-
-def _insert_backend(category, backend):
-    """ Insert backend into internal structure for category. """
-    current = rave.game.current()
-    if (current, category) not in _available_backends:
-        _available_backends[current, category] = []
-
-    # Adjust priority so that an ascending sort (as specified by heapq) will yield highest-priority backends.
-    adjusted_priority = PRIORITY_MAX - (backend.PRIORITY + PRIORITY_MIN)
-    heapq.heappush(_available_backends[current, category], (adjusted_priority, id(backend), backend))
-
-def _backends_for(category):
-    """ Yield a list of sorted backends for category. """
-    # Easily enough, the use of heapq makes sure it's already sorted.
-    current = rave.game.current()
-    return (backend for priority, id, backend in _available_backends.get((current, category), []))
-
-def _backend_available(backend):
-    """ Determine if the backend is available for this platform. """
-    try:
-        return backend.available()
-    except:
-        # TODO: Log?
-        return False
-
-def _mark_selected_backend(category, backend):
-    """ Mark given backend as selected backend for category. """
-    current = rave.game.current()
-    _selected_backends[current, category] = backend
-
-def _has_selected_backend(category):
-    """ Determine if given category has a selected backend. """
-    current = rave.game.current()
-    return (current, category) in _selected_backends
-
-def _selected_backend(category):
-    """ Get selected backend for category. """
-    current = rave.game.current()
-    return _selected_backends[current, category]
-
-def _select_backend(category, backend):
-    """
-    Attempt to select backend for category. Will return whether or not selection failed.
-    Assumes backend is valid for category and available on current platform.
-    Returns whether or not selection succeeded.
-    """
-    try:
-        loaded = backend.load()
-    except Exception as e:
-        _log.exception(e, 'Selected {cat} backend {backend} but load() threw an exception.', backend=backend.__name__, cat=category)
-        return False
-
-    if loaded:
-        _mark_selected_backend(category, backend)
-    else:
-        _log.warn('Selected {cat} backend {backend} but load() failed.', backend=backend.__name__, cat=category)
-
-    return loaded
-
-
 ## API.
 
 def register(category, backend):
-    """
-    Register the given backend module in `category`. Every backend is expected to implement the following API:
-    - PRIORITY: constant indicating the backend priority on a scale from `PRIORITY_MIN` to `PRIORITY_MAX`;
-        `PRIORITY_MAX` being very important, `PRIORITY_NEUTRAL` neutral, `PRIORITY_MIN` last resort.
-    - available(): check if the backend is available on the current platform.
-    - load(): the backend has been selected to be loaded. Initialize it.
-    """
-    priority = backend.PRIORITY
-    if priority < PRIORITY_MIN or priority > PRIORITY_MAX:
-        raise ValueError('Priority for backend {backend} has to lie between {min} and {max}'
-                 .format(backend=backend.__name__, min=PRIORITY_MIN, max=PRIORITY_MAX))
+    """ Register a backend under the given category. """
+    if category not in ALL_CATEGORIES:
+        raise ValueError('Unknown category: {}'.format(category))
 
-    _insert_backend(category, backend)
-    _log.debug('Registered {cat} backend: {backend}', cat=category, backend=backend.__name__)
+    if not hasattr(backend, 'BACKEND_PRIORITY'):
+        backend.BACKEND_PRIORITY = PRIORITY_NEUTRAL
+
+    _candidates.setdefault(category, [])
+
+    # heapq implements a min-priority queue, so adjust priority to match.
+    priority = -backend.BACKEND_PRIORITY
+    # Order by priority, then by a pseudo-random number to avoid comparison crashing
+    # on backends with identical priorities, since modules are not comparable.
+    entry = (priority, id(backend), backend)
+    heapq.heappush(_candidates[category], entry)
+
+    _log.debug('Registered {cat} backend: {backend}', cat=CATEGORY_NAMES[category], backend=backend.__name__)
+
+def remove(category, backend):
+    """ Remove backend as candidate for given category. """
+    if category not in ALL_CATEGORIES:
+        raise ValueError('Unknown category: {}'.format(category))
+
+    priority = -backend.BACKEND_PRIORITY
+    entry = (priority, id(backend), backend)
+    _candidates[category].remove(entry)
 
 def select(category):
-    """
-    Select a backend for the given `category`.
-    Return the selected backend if it can find a suitable backend, else returns None.
-    """
-    if not _has_selected_backend(category):
-        _log.debug('Selecting {cat} backend...', cat=category)
-        selected = None
+    """ Select a backend for the given category and load it. """
+    if category not in ALL_CATEGORIES:
+        raise ValueError('Unknown category: {}'.format(category))
 
-        # Iterate through sorted list and find a proper backend.
-        for backend in _backends_for(category):
-            available = _backend_available(backend)
-            _log.debug('{backend} available: {av}', backend=backend.__name__, av=available)
+    selected = set()
+    for _, _, backend in sorted(_candidates.get(category, [])):
+        if _is_available(category, backend) and _load_backend(category, backend):
+            _log('Selected {cat} backend: {backend}', cat=CATEGORY_NAMES[category], backend=backend.__name__)
 
-            if available:
-                if _select_backend(category, backend):
-                    selected = backend
-                    break
-                else:
-                    _log.warn('{backend} available but initialization failed. Moving on.', backend=backend.__name__)
+            # Mark as selected.
+            _selected.setdefault(category, set())
+            _selected[category].add(backend)
+            selected.add(backend)
+
+            if category in SINGLE_BACKEND_CATEGORIES:
+                break
+    else:
+        if not selected:
+            _log.err('No {cat} backends available.', cat=CATEGORY_NAMES[category])
+
+    return selected
+
+
+
+## Internals.
+
+_candidates = {}
+_selected = {}
+_log = rave.log.get(__name__)
+
+def _is_available(category, backend):
+    if hasattr(backend, 'backend_available'):
+        try:
+            return backend.backend_available(category)
+        except Exception as e:
+            _log.debug('Backend {backend} not available: {err}', backend=backend.__name__, err=e)
+            return False
+    return True
+
+def _load_backend(category, backend):
+    if hasattr(backend, 'backend_load'):
+        try:
+            backend.backend_load(category)
+        except Exception as e:
+            _log.warn('Error loading backend {backend}: {err}', backend=backend.__name__, err=e)
+            return False
         else:
-            _log.err('No {cat} backends available.', cat=category)
-            return None
-
-        _log('Selected {cat} backend: {backend}', cat=category, backend=selected.__name__)
-
-    return _selected_backend(category)
+            return True
+    return True
