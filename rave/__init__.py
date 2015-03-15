@@ -1,6 +1,5 @@
-""" rave - a modular and extensible visual novel engine. """
+""" A modular and extensible visual novel engine. """
 
-__name__ = 'rave'
 __version__ = '0.1.0'
 __version_info__ = (0, 1, 0)
 __author__ = 'rave developers and contributors'
@@ -13,6 +12,6 @@ from . import execution
 from . import filesystem
 from . import loader
 from . import modularity
+from . import backends
 from . import bootstrap
 from . import game
-from . import backends
