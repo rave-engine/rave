@@ -155,5 +155,5 @@ def _mark_initialized(module):
 
 def _provision_candidates(provision):
     if provision in _available:
-        return [(0, 0, _available[provision])] + _provisions.get(provision, [])
-    return _provisions.get(provision, [])
+        return [(0, 0, _available[provision])] + sorted(_provisions.get(provision, []))
+    return sorted(_provisions.get(provision, []))
