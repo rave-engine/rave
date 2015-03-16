@@ -79,20 +79,23 @@ def select(category):
         raise ValueError('Unknown category: {}'.format(category))
 
     selected = set()
-    for _, _, backend in sorted(_candidates.get(category, [])):
-        if _is_available(category, backend) and _load_backend(category, backend):
-            _log('Selected {cat} backend: {backend}', cat=CATEGORY_NAMES[category], backend=backend.__name__)
-
-            # Mark as selected.
-            _selected.setdefault(category, set())
-            _selected[category].add(backend)
-            selected.add(backend)
-
-            if category in SINGLE_BACKEND_CATEGORIES:
-                break
+    if category in _selected:
+        selected = _selected[category]
     else:
-        if not selected:
-            _log.err('No {cat} backends available.', cat=CATEGORY_NAMES[category])
+        for _, _, backend in sorted(_candidates.get(category, [])):
+            if _is_available(category, backend) and _load_backend(category, backend):
+                _log('Selected {cat} backend: {backend}', cat=CATEGORY_NAMES[category], backend=backend.__name__)
+
+                # Mark as selected.
+                _selected.setdefault(category, set())
+                _selected[category].add(backend)
+                selected.add(backend)
+
+                if category in SINGLE_BACKEND_CATEGORIES:
+                    break
+        else:
+            if not selected:
+                _log.err('No {cat} backends available.', cat=CATEGORY_NAMES[category])
 
     if category in SINGLE_BACKEND_CATEGORIES:
         return selected.pop()
