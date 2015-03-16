@@ -58,7 +58,9 @@ def load_module(name):
     blacklist = {}
 
     while True:
+        loaded = []
         dependencies = _resolve_dependencies(module, blacklist=blacklist.copy())
+
         for dependency in reversed(dependencies):
             if dependency in _loaded:
                 continue
@@ -66,9 +68,15 @@ def load_module(name):
             _log('Loading module: {} (dependency)', dependency.__name__)
             try:
                 init_module(dependency)
+                loaded.append(dependency)
             except Exception as e:
                 blacklist[dependency] = 'initialization failed: {}'.format(e)
                 _log.warn('Loading failed, re-generating dependencies...')
+
+                # Unload all loaded dependencies.
+                for dependency in reversed(loaded):
+                    _log('Unloading module: {} (dependency)', dependency.__name__)
+                    exit_module(dependency)
                 # Go back to start of while-loop by breaking out of for-loop.
                 break
         else:
@@ -77,13 +85,27 @@ def load_module(name):
 
     if module not in _loaded:
         _log('Loading module: {}', name)
-        init_module(module)
+        try:
+            init_module(module)
+        except:
+            _log.err('Loading failed, unloading dependencies...')
+            # Unload all loaded dependencies.
+            for dependency in reversed(loaded):
+                _log('Unloading module: {} (dependency)', dependency.__name__)
+                exit_module(dependency)
+            raise
 
 def init_module(module):
     if module not in _loaded:
         if hasattr(module, 'load'):
             module.load()
         _loaded.add(module)
+
+def exit_module(module):
+    if module in _loaded:
+        if hasattr(module, 'unload'):
+            module.unload()
+        _loaded.remove(module)
 
 
 ## Internals.
