@@ -10,11 +10,6 @@ import errno
 from functools import wraps
 import rave.filesystem as fs
 
-__author__ = 'Shiz'
-__version__ = '0.1.0'
-__version_info__ = (0, 1, 0)
-__license__ = '2-clause BSD'
-
 
 
 ## Internal module stuff.
