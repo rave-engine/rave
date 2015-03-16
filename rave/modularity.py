@@ -101,7 +101,7 @@ def _resolve_dependencies(mod, resolving=None, provided=None, blacklist=None):
     if resolving is None:
         resolving = set()
     if provided is None:
-        provided = set()
+        provided = {}
     if blacklist is None:
         blacklist = {}
 
@@ -137,7 +137,7 @@ def _resolve_dependencies(mod, resolving=None, provided=None, blacklist=None):
                         dependencies.remove(dependency)
                     dependencies.append(dependency)
 
-                provided.add(provider)
+                provided[requirement] = provider
                 break
         else:
             # Build useful error message.
