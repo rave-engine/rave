@@ -60,6 +60,9 @@ def load_module(name):
     while True:
         dependencies = _resolve_dependencies(module, blacklist=blacklist.copy())
         for dependency in reversed(dependencies):
+            if dependency in _loaded:
+                continue
+
             _log('Loading module: {} (dependency)', dependency.__name__)
             try:
                 init_module(dependency)
@@ -72,8 +75,9 @@ def load_module(name):
             # All dependencies loaded successfully.
             break
 
-    _log('Loading module: {}', name)
-    init_module(module)
+    if module not in _loaded:
+        _log('Loading module: {}', name)
+        init_module(module)
 
 def init_module(module):
     if module not in _loaded:
