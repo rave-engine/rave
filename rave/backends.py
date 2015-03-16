@@ -94,6 +94,8 @@ def select(category):
         if not selected:
             _log.err('No {cat} backends available.', cat=CATEGORY_NAMES[category])
 
+    if category in SINGLE_BACKEND_CATEGORIES:
+        return selected.pop()
     return selected
 
 
