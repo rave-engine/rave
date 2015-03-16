@@ -40,6 +40,8 @@ class LogFilter(logging.Filter):
             record.game = '<init>'
         return True
 
+logging.addLevelName(5, 'TRACE')
+
 
 ## API.
 
@@ -50,6 +52,7 @@ ERROR = 0x4
 WARNING = 0x8
 INFO = 0x10
 DEBUG = 0x20
+TRACE = 0x40
 
 
 class Logger:
@@ -68,7 +71,7 @@ class Logger:
         self._file = file or self.FILE
         self._filter = filter or LogFilter()
         self._formatter = formatter or logging.Formatter(self.FORMAT, datefmt=self.DATE_FORMAT, style='{')
-        self._hooks = { FATAL: [], ERROR: [], WARNING: [], INFO: [], DEBUG: [], EXCEPTION: [] }
+        self._hooks = { FATAL: [], ERROR: [], WARNING: [], INFO: [], DEBUG: [], TRACE: [], EXCEPTION: [] }
         self._level = level or self.LEVEL
 
         if name:
@@ -82,7 +85,7 @@ class Logger:
 
     def _setup_logger(self):
         """ Set logger settings. """
-        self.logger.setLevel(logging.DEBUG)
+        self.logger.setLevel(0)
 
         handler = logging.StreamHandler()
         handler.setFormatter(self.formatter)
@@ -164,6 +167,13 @@ class Logger:
 
     def __call__(self, *args, **kwargs):
         return self.inform(*args, **kwargs)
+
+    def trace(self, message, *args, **kwargs):
+        """ Log TRACE message. """
+        if self.level & TRACE:
+            message = message.format(*args, **kwargs)
+            self.logger.log(5, message)
+            self._call_hooks(TRACE, message)
 
     def debug(self, message, *args, **kwargs):
         """ Log DEBUG message. """
