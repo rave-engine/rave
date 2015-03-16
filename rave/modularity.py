@@ -59,7 +59,8 @@ def load_module(name):
 
     while True:
         loaded = []
-        dependencies = _resolve_dependencies(module, blacklist=blacklist.copy())
+        provisions = {}
+        dependencies = _resolve_dependencies(module, blacklist=blacklist.copy(), provided=provisions)
 
         for dependency in reversed(dependencies):
             if dependency in _loaded:
@@ -67,7 +68,7 @@ def load_module(name):
 
             _log('Loading module: {} (dependency)', dependency.__name__)
             try:
-                init_module(dependency)
+                init_module(dependency, provisions)
                 loaded.append(dependency)
             except Exception as e:
                 blacklist[dependency] = 'initialization failed: {}'.format(e)
@@ -86,7 +87,7 @@ def load_module(name):
     if module not in _loaded:
         _log('Loading module: {}', name)
         try:
-            init_module(module)
+            init_module(module, provisions)
         except:
             _log.err('Loading failed, unloading dependencies...')
             # Unload all loaded dependencies.
@@ -95,10 +96,14 @@ def load_module(name):
                 exit_module(dependency)
             raise
 
-def init_module(module):
+def init_module(module, provisions):
     if module not in _loaded:
         if hasattr(module, 'load'):
-            module.load()
+            # Filter out provisions requested by module.
+            requirements = getattr(module, '__requires__', [])
+            provisions = { k: v for k, v in provisions.items() if k in requirements }
+
+            module.load(**provisions)
         _loaded.add(module)
 
 def exit_module(module):
