@@ -121,9 +121,9 @@ def _is_available(category, backend):
     return True
 
 def _load_backend(category, backend):
-    if hasattr(backend, 'backend_load'):
+    if hasattr(backend, 'load_backend'):
         try:
-            backend.backend_load(category)
+            backend.load_backend(category)
         except Exception as e:
             _log.warn('Error loading backend {backend}: {err}', backend=backend.__name__, err=e)
             return False
