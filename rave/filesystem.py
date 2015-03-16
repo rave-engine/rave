@@ -62,7 +62,7 @@ class FileSystem:
 
     def clear(self):
         if hasattr(self, '_roots'):
-            _log.debug('Clearing file system...')
+            _log.trace('Clearing file system...')
 
         with self._lock:
             # File system roots. A mapping of path -> [ list of providers ].
@@ -82,7 +82,7 @@ class FileSystem:
 
     def _build_cache(self):
         """ Rebuild internal file cache. This will make looking up files, errors notwithstanding, an O(1) lookup operation. """
-        _log.debug('Building cache...')
+        _log.trace('Building cache...')
 
         with self._lock:
             self._file_cache = { self.ROOT: [] }
@@ -98,7 +98,7 @@ class FileSystem:
         This function will check if transformers exist for the file in the process, which might indirectly trigger recursion,
         since a transformed file acts as a new provider.
         """
-        _log.debug('Caching mount point {root} <- {prov}...', prov=provider, root=root)
+        _log.trace('Caching mount point {root} <- {prov}...', prov=provider, root=root)
         # Add root to cache.
         self._cache_directory(provider, root, root)
 
@@ -116,7 +116,7 @@ class FileSystem:
         Add `transformer` to file cache. This will search all existing files to look for files that match the `pattern`, and if so,
         adds the transformer as a new provider for that file and optionally removes it if the transformer consumes the file.
         """
-        _log.debug('Caching {trans} for {pattern}...', trans=transformer, pattern=pattern.pattern)
+        _log.trace('Caching {trans} for {pattern}...', trans=transformer, pattern=pattern.pattern)
 
         # Traverse paths to find matching files.
         for file in self._file_cache.copy():
@@ -133,7 +133,7 @@ class FileSystem:
 
     def _cache_directory(self, provider, root, path):
         """ Add `path`, provided by `provider`, as a directory to the file cache. """
-        _log.debug('Caching directory: {path} <- {provider}...', path=path, provider=provider)
+        _log.trace('Caching directory: {path} <- {provider}...', path=path, provider=provider)
 
         with self._lock:
             self._listing_cache.setdefault(path, set())
@@ -141,7 +141,7 @@ class FileSystem:
 
     def _cache_file(self, provider, root, path):
         """ Add `path`, provided by `provider`, as a file to the file cache. """
-        _log.debug('Caching file: {path} <- {provider}...', path=path, provider=provider)
+        _log.trace('Caching file: {path} <- {provider}...', path=path, provider=provider)
         localpath = self._local_file(root, path)
 
         for pattern, transformers in self._transformers.items():
@@ -202,7 +202,7 @@ class FileSystem:
 
         if not instance.valid():
             return False
-        _log.debug('Caching transformed file: {path} <- {trans}...', path=path, trans=transformer)
+        _log.trace('Caching transformed file: {path} <- {trans}...', path=path, trans=transformer)
 
         # Determine root directory of files.
         if instance.relative():
@@ -311,6 +311,7 @@ class FileSystem:
             self._roots.setdefault(path, [])
             self._roots[path].append(provider)
 
+        _log.debug('Mounted {provider} on {path}.', provider=provider, path=path)
         if self._file_cache is None:
             self._build_cache()
         else:
@@ -322,6 +323,7 @@ class FileSystem:
         with self._lock:
             self._roots[path].remove(provider)
 
+        _log.debug('Unmounted {provider} from {path}.', provider=provider, path=path)
         self._build_cache()
 
     def transform(self, pattern, transformer):
@@ -342,18 +344,20 @@ class FileSystem:
             self._transformers.setdefault(pattern, [])
             self._transformers[pattern].append(transformer)
 
+        _log.debug('Added transformer {transformer} for pattern {pattern}.', transformer=transformer, pattern=pattern.pattern)
         if self._file_cache is None:
             self._build_cache()
         else:
             self._build_transformer_cache(transformer, pattern)
 
-    def untransform(self, pattern, provider):
+    def untransform(self, pattern, transformer):
         """ Remove a transformer from the virtual file system. Will trigger a full cache rebuild. """
         pattern = re.compile(pattern, re.UNICODE)
 
         with self._lock:
-            self._transformers[pattern].remove(provider)
+            self._transformers[pattern].remove(transformer)
 
+        _log.debug('Removed transformer {transformer} for pattern {pattern}.', transformer=transformer, pattern=pattern.pattern)
         self._build_cache()
 
     def open(self, filename, *args, **kwargs):
@@ -369,6 +373,7 @@ class FileSystem:
 
         for provider, localfile in self._providers_for_file(filename):
             try:
+                _log.trace('Opening {filename} from {provider}...', filename=filename, provider=provider)
                 return provider.open(localfile, *args, **kwargs)
             except FileNotFound:
                 continue

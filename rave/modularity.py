@@ -66,17 +66,17 @@ def load_module(name):
             if dependency in _loaded:
                 continue
 
-            _log('Loading module: {} (dependency)', dependency.__name__)
+            _log.trace('Loading module: {} (dependency)', dependency.__name__)
             try:
                 init_module(dependency, provisions)
                 loaded.append(dependency)
             except Exception as e:
                 blacklist[dependency] = 'initialization failed: {}'.format(e)
-                _log.warn('Loading failed, re-generating dependencies...')
+                _log.warn('Loading dependency failed, unloading and re-generating dependencies...')
 
                 # Unload all loaded dependencies.
                 for dependency in reversed(loaded):
-                    _log('Unloading module: {} (dependency)', dependency.__name__)
+                    _log.trace('Unloading module: {} (dependency)', dependency.__name__)
                     exit_module(dependency)
                 # Go back to start of while-loop by breaking out of for-loop.
                 break
@@ -92,8 +92,9 @@ def load_module(name):
             _log.err('Loading failed, unloading dependencies...')
             # Unload all loaded dependencies.
             for dependency in reversed(loaded):
-                _log('Unloading module: {} (dependency)', dependency.__name__)
+                _log.trace('Unloading module: {} (dependency)', dependency.__name__)
                 exit_module(dependency)
+
             raise
 
 def init_module(module, provisions):

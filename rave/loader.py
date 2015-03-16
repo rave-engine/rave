@@ -73,6 +73,8 @@ class VFSImporter(importlib.abc.MetaPathFinder, importlib.abc.SourceLoader):
 
     def find_spec(self, name, path, target=None):
         """ Find ModuleSpec for given module. Attempt to see if module exists, basically. """
+        _log.trace('Got import request for: {}', name)
+
         # We only find modules intended for us.
         if name != self.package and not name.startswith(self.package + '.'):
             return None
