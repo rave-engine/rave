@@ -214,10 +214,9 @@ class FileSystemFile(fs.File):
             raise fs.FileNotSeekable(self.filename)
 
         if relative:
-            self._handle.seek(amount, os.SEEK_CUR)
+            return self._handle.seek(amount, os.SEEK_CUR)
         else:
-            self._handle.seek(amount, os.SEEK_SET)
-        return self.tell()
+            return self._handle.seek(amount, os.SEEK_SET)
 
     @_translate_errors
     @_ensure_opened
