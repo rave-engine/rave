@@ -57,6 +57,7 @@ def load_module(name):
     module = _available[name]
     blacklist = {}
 
+    _log('Loading module: {}', name)
     while True:
         loaded = []
         provisions = {}
@@ -66,7 +67,7 @@ def load_module(name):
             if dependency in _loaded:
                 continue
 
-            _log.trace('Loading module: {} (dependency)', dependency.__name__)
+            _log.debug('Loading module: {} (dependency)', dependency.__name__)
             try:
                 init_module(dependency, provisions)
                 loaded.append(dependency)
@@ -85,7 +86,7 @@ def load_module(name):
             break
 
     if module not in _loaded:
-        _log('Loading module: {}', name)
+        _log.debug('Loading module: {} (main)', module.__name__)
         try:
             init_module(module, provisions)
         except:
