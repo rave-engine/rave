@@ -60,6 +60,9 @@ class FileSystem:
         # Clear the file system.
         self.clear()
 
+    def __repr__(self):
+        return '<{}>'.format(self.__class__.__name__)
+
     def clear(self):
         if hasattr(self, '_roots'):
             _log.trace('Clearing file system...')
@@ -240,6 +243,9 @@ class FileSystem:
         if root == self.ROOT:
             return path
         return path[len(root):]
+
+
+    ## API.
 
     def list(self, subdir=None):
         """ List all files and directories in the root file system, or `subdir` if given, recursively. """
@@ -470,6 +476,12 @@ class File(io.IOBase):
      - seek(position, mode) (if seekable, raises FileNotSeekable by default)
      - tell() (if seekable, raises FileNotSeekable by default)
     """
+    def __del__(self):
+        try:
+            self.close()
+        except:
+            # Nothing we can do about it now, anyway.
+            pass
 
     def close(self):
         """ Close file. Any operation on the file after calling this method will fail with `FileClosed` raised. """
@@ -512,6 +524,9 @@ class FileSystemProvider:
     """ A provider to mount a filesystem within another filesystem. """
     def __init__(self, fs):
         self.fs = fs
+
+    def __repr__(self):
+        return '<FileSystemProvider: {}>'.format(self.fs)
 
     def list(self):
         return self.fs.list()
