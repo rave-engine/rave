@@ -29,7 +29,7 @@ import logging
 _loggers = {}
 
 class LogFilter(logging.Filter):
-    """ Filter that adds current game information to every message. """
+    """ Filter that adds current game information to every message, and reformats some of the names. """
     def filter(self, record):
         from . import game
 
@@ -38,6 +38,12 @@ class LogFilter(logging.Filter):
             record.game = current.name
         else:
             record.game = '<init>'
+
+        if record.name.startswith('rave.modules.'):
+            record.name = 'module:' + record.name.replace('rave.modules.', '', 1).split('.', 1)[0]
+        elif record.name.startswith('rave.'):
+            record.name = record.name.replace('rave.', '', 1)
+
         return True
 
 logging.addLevelName(5, 'TRACE')
@@ -60,7 +66,7 @@ class Logger:
     Thin wrapper around Python's rather atrocious logging module in order to make it more bearable.
     Formats messages automatically according to advanced string formatting, handles logger name and logfile changes painlessly.
     """
-    FORMAT = '{asctime} [{game}:{name}] {levelname}: {message}'
+    FORMAT = '{asctime} {game} [{name}] {levelname}: {message}'
     DATE_FORMAT = None
     FILE = None
     LEVEL = INFO | WARNING | ERROR | FATAL | EXCEPTION
