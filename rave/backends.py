@@ -125,7 +125,7 @@ def _load_backend(category, backend):
         try:
             backend.load_backend(category)
         except Exception as e:
-            _log.warn('Error loading backend {backend}: {err}', backend=backend.__name__, err=e)
+            _log.exception(e, 'Error loading backend {backend}', backend=backend.__name__)
             return False
         else:
             return True
