@@ -103,6 +103,16 @@ def select(category):
         return selected.pop()
     return selected
 
+def handle_events(game):
+    game.events.emit('backend.events.start')
+    for category in [ BACKEND_VIDEO, BACKEND_AUDIO, BACKEND_INPUT ]:
+        if category not in _selected:
+            continue
+        target = _selected[category]
+        for backend in target:
+            backend.handle_events()
+    game.events.emit('backend.events.stop')
+
 
 
 ## Internals.
