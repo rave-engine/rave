@@ -29,6 +29,8 @@ class Game:
         self.fs = rave.filesystem.FileSystem()
         self.events = rave.events.EventBus()
         self.env = rave.execution.ExecutionEnvironment(self)
+        self.window = None
+        self.mixer = None
 
         # Announce game creation over parent event bus.
         parent = current()
