@@ -1,9 +1,14 @@
 """
 rave event bus.
 """
+import rave.log
 
 
 ## API.
+
+class StopProcessing(BaseException):
+    """ Exception raised to indicate this event should onot be processed further. """
+    pass
 
 class EventBus:
     def __init__(self):
@@ -20,7 +25,13 @@ class EventBus:
         handlers = self.handlers.get(event)
         if handlers:
             for handler in handlers:
-                self._invoke_handler(handler, event, args, kwargs)
+                try:
+                    self._invoke_handler(handler, event, args, kwargs)
+                except StopProcessing:
+                    break
+                except Exception as e:
+                    _log.exception(e, 'Exception thrown while processing event {event}.', event=event)
+
 
     def _invoke_handler(self, handler, event, args, kwargs):
         handler(event, *args, **kwargs)
