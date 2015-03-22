@@ -39,3 +39,17 @@ class EventBus:
 
     def _invoke_handler(self, handler, event, args, kwargs):
         handler(event, *args, **kwargs)
+
+def current():
+    """ Get current event bus. """
+    # Prevent circular imports.
+    import rave.game
+    game = rave.game.current()
+    if not game:
+        return None
+    return game.events
+
+
+## Internals.
+
+_log = rave.log.get(__name__)
