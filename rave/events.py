@@ -18,6 +18,10 @@ class EventBus:
         self.handlers.setdefault(event, [])
         self.handlers[event].append(handler)
 
+    def hook_first(self, event, handler):
+        self.handlers.setdefault(event, [])
+        self.handlers[event].insert(0, handler)
+
     def unhook(self, event, handler):
         self.handlers[event].remove(handler)
 
