@@ -39,11 +39,6 @@ class NotADirectory(FileSystemError, NotADirectoryError):
     pass
 
 
-## Internals.
-
-_log = rave.log.get(__name__)
-
-
 ## API.
 
 class FileSystem:
@@ -597,3 +592,9 @@ def split(path, *args, **kwargs):
 
 def normalize(path):
     return current().normalize(path)
+
+
+## Internals.
+
+_log = rave.log.get(__name__)
+
