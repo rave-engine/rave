@@ -542,3 +542,58 @@ class FileSystemProvider:
 
     def isdir(self, filename):
         return self.fs.isdir(filename)
+
+
+## Stateful API.
+
+def current():
+    import rave.game
+    game = rave.game.current()
+    if not game:
+        return None
+    return game.fs
+
+def list(subdir=None):
+    return current().list(subdir)
+
+def listdir(subdir=None):
+    return current().listdir(subdir)
+
+def mount(path, provider):
+    return current().mount(path, provider)
+
+def unmount(path, provider):
+    return current().unmount(path, provider)
+
+def transform(pattern, transformer):
+    return current().transform(pattern, transformer)
+
+def untransform(pattern, transformer):
+    return current().untransform(pattern, transformer)
+
+def open(self, filename, *args, **kwargs):
+    return current().open(filename, *args, **kwargs)
+
+def exists(filename):
+    return current().exists(filename)
+
+def isfile(filename):
+    return current().isfile(filename)
+
+def isdir(filename):
+    return current().isdir(filename)
+
+def dirname(path):
+    return current().dirname(path)
+
+def basename(path):
+    return current().basename(path)
+
+def join(*paths, normalized=True):
+    return current().join(*paths, normalized=normalized)
+
+def split(path, *args, **kwargs):
+    return current().split(path, *args, **kwargs)
+
+def normalize(path):
+    return current().normalize(path)

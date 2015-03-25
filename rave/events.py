@@ -40,6 +40,9 @@ class EventBus:
     def _invoke_handler(self, handler, event, args, kwargs):
         handler(event, *args, **kwargs)
 
+
+## Stateful API.
+
 def current():
     """ Get current event bus. """
     # Prevent circular imports.
@@ -48,6 +51,18 @@ def current():
     if not game:
         return None
     return game.events
+
+def emit(event, *args, **kwargs):
+    current().emit(event, *args, **kwargs)
+
+def hook(event, handler):
+    current().hook(event, handler)
+
+def hook_first(event, handler):
+    current().hook_first(event, handler)
+
+def unhook(event, handler):
+    current().unhook(event, handler)
 
 
 ## Internals.
