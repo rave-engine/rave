@@ -566,7 +566,7 @@ def transform(pattern, transformer):
 def untransform(pattern, transformer):
     return current().untransform(pattern, transformer)
 
-def open(self, filename, *args, **kwargs):
+def open(filename, *args, **kwargs):
     return current().open(filename, *args, **kwargs)
 
 def exists(filename):
