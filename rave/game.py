@@ -8,6 +8,7 @@ import rave.log
 import rave.filesystem
 import rave.execution
 import rave.events
+import rave.resources
 
 # The engine game!
 engine = None
@@ -29,9 +30,11 @@ class Game:
         self.name = name
         self.base = base
         self.active_lock = threading.Lock()
+
         self.fs = rave.filesystem.FileSystem()
         self.events = rave.events.EventBus()
         self.env = rave.execution.ExecutionEnvironment(self)
+        self.resources = rave.resources.ResourceManager()
         self.window = None
         self.mixer = None
 
