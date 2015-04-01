@@ -13,5 +13,6 @@ from . import filesystem
 from . import loader
 from . import modularity
 from . import backends
+from . import rendering
 from . import bootstrap
 from . import game
