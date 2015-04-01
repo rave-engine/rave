@@ -65,11 +65,8 @@ class FileSystem:
         with self._lock:
             # File system roots. A mapping of path -> [ list of providers ].
             self._roots = {}
-            # On-demand providers. A list of providers.
-            self._on_demands = []
             # Transforming providers. A mapping of extension -> [ list of providers ].
             self._transformers = {}
-
             # File/directory list cache. A mapping of filename -> [ list of providers ].
             self._file_cache = None
             # Directory content cache. A mapping of directory -> { set of direct contents }.
