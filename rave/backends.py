@@ -78,30 +78,33 @@ def select(category):
     if category not in ALL_CATEGORIES:
         raise ValueError('Unknown category: {}'.format(category))
 
-    selected = set()
     if category in _selected:
-        selected = _selected[category]
-    else:
-        for _, _, backend in sorted(_candidates.get(category, [])):
-            if _is_available(category, backend) and _load_backend(category, backend):
-                _log('Selected {cat} backend: {backend}', cat=CATEGORY_NAMES[category], backend=backend.__name__)
+        return _selected[category]
 
-                # Mark as selected.
+    for _, _, backend in sorted(_candidates.get(category, [])):
+        if _is_available(category, backend) and _load_backend(category, backend):
+            _log('Selected {cat} backend: {backend}', cat=CATEGORY_NAMES[category], backend=backend.__name__)
+
+            # Mark as selected.
+            if category in SINGLE_BACKEND_CATEGORIES:
+                _selected[category] = backend
+                break
+            else:
                 _selected.setdefault(category, set())
                 _selected[category].add(backend)
-                selected.add(backend)
+    else:
+        if category not in _selected:
+            _log.err('No {cat} backends available.', cat=CATEGORY_NAMES[category])
 
-                if category in SINGLE_BACKEND_CATEGORIES:
-                    break
-        else:
-            if not selected:
-                _log.err('No {cat} backends available.', cat=CATEGORY_NAMES[category])
+    return get(category)
 
-    if category in SINGLE_BACKEND_CATEGORIES:
-        if not selected:
+def get(category):
+    if category not in _selected:
+        if category in SINGLE_BACKEND_CATEGORIES:
             return None
-        return selected.pop()
-    return selected
+        return set()
+
+    return _selected[category]
 
 def handle_events(game):
     game.events.emit('backend.events.start')
@@ -109,8 +112,11 @@ def handle_events(game):
         if category not in _selected:
             continue
         target = _selected[category]
-        for backend in target:
-            backend.handle_events()
+        if category in SINGLE_BACKEND_CATEGORIES:
+            target.handle_events()
+        else:
+            for backend in target:
+                backend.handle_events()
     game.events.emit('backend.events.stop')
 
 
