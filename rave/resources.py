@@ -3,8 +3,8 @@ rave resource manager.
 
 Resource loaders can register themselves with the ResourceManager using register_loader().
 Loaders registered should take the following API:
- - loader.can_load(obj): Figure out if the given file object (a rave.filesystem.File instance) is fit to be loaded. Seeking/reading allowed.
- - loader.load(obj): Decode the given file object. Must return either ImageData, AudioData, or Renderable. ImageData and AudioData instances
+ - loader.can_load(path, obj): Figure out if the given file object (a rave.filesystem.File instance) is fit to be loaded. Seeking/reading allowed.
+ - loader.load(path, obj): Decode the given file object. Must return either ImageData, AudioData, or Renderable. ImageData and AudioData instances
      will be passed to create_drawable()/create_soundable() of the current video/audio backends.
 """
 import os
@@ -71,7 +71,7 @@ class ResourceManager:
             loaders.extend(candidates)
 
         handle = rave.filesystem.open(path, 'rb')
-        res, success = self.try_load(handle, loaders)
+        res, success = self.try_load(path, handle, loaders)
         if not success:
             raise LoadFailure(path, res)
 
@@ -81,7 +81,7 @@ class ResourceManager:
             return rave.backends.get(rave.backends.BACKEND_AUDIO).create_soundable(res)
         return res
 
-    def try_load(self, file, loaders):
+    def try_load(self, path, file, loaders):
         errs = []
 
         for loader in loaders:
@@ -89,9 +89,9 @@ class ResourceManager:
                 file.seek(0, os.SEEK_SET)
             except rave.filesystem.FileNotSeekable:
                 pass
-            if loader.can_load(file):
+            if loader.can_load(path, file):
                 try:
-                    return loader.load(file), True
+                    return loader.load(path, file), True
                 except Exception as e:
                     errs.append(e)
 
