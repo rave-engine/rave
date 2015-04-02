@@ -17,3 +17,4 @@ from . import rendering
 from . import resources
 from . import bootstrap
 from . import game
+from . import main

@@ -2,6 +2,8 @@
 rave entry point. Parse command line arguments and launch game.
 """
 import argparse
+import rave.bootstrap
+
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='A modular and extensible visual novel engine.', prog='rave')
@@ -14,15 +16,16 @@ def parse_arguments():
 
 def main():
     args = parse_arguments()
-
-    import rave.bootstrap
     engine = rave.bootstrap.bootstrap_engine(args.bootstrapper)
 
-    with engine.env:
-        if args.game:
+    if args.game:
+        with engine.env:
             game = rave.bootstrap.bootstrap_game(args.game_bootstrapper, args.game)
-            rave.bootstrap.shutdown_game(game)
+            rave.main.init_game(game)
+            rave.main.run_game(game)
+        rave.bootstrap.shutdown_game(game)
 
     rave.bootstrap.shutdown()
 
 main()
+
