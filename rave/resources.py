@@ -24,11 +24,11 @@ class LoadFailure(Exception):
         self.last_error = errors[-1] if errors else None
 
     def __str__(self):
-        if self.errors:
+        if not self.errors:
             reason = 'No loaders found.'
         else:
-            reason = '\n' + '\n'.join(str(e) for e in self.errors)
-        return '{}.{}: Failed to load resource {path}: {reason}'.format(__name__, self.__class__.__name__, path=self.path, reason=reason)
+            reason = '\n' + '\n'.join(' - {}.{}: {}'.format(l.__module__, l.__name__, e) for l, e in self.errors)
+        return 'Failed to load resource {path}: {reason}'.format(path=self.path, reason=reason)
 
 
 class ImageData:
@@ -93,7 +93,7 @@ class ResourceManager:
                 try:
                     return loader.load(path, file), True
                 except Exception as e:
-                    errs.append(e)
+                    errs.append((loader, e))
 
         return errs, False
 
