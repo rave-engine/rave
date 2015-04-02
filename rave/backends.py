@@ -73,6 +73,11 @@ def remove(category, backend):
     entry = (priority, id(backend), backend)
     _candidates[category].remove(entry)
 
+
+def select_all():
+    for category in ALL_CATEGORIES:
+        select(category)
+
 def select(category):
     """ Select a backend for the given category and load it. """
     if category not in ALL_CATEGORIES:
