@@ -53,9 +53,20 @@ def register_module(module):
         _requirements.setdefault(module.__name__, [])
         _requirements[module.__name__].extend(module.__requires__)
 
+
+def load_all():
+    for module in _available:
+        try:
+            load_module(module)
+        except Exception as e:
+            _log.exception(e, 'Could not load module {}.', module)
+
 def load_module(name):
     module = _available[name]
     blacklist = {}
+
+    if module in _loaded:
+        return
 
     _log('Loading module: {}', name)
     while True:
@@ -85,18 +96,17 @@ def load_module(name):
             # All dependencies loaded successfully.
             break
 
-    if module not in _loaded:
-        _log.debug('Loading module: {} (main)', module.__name__)
-        try:
-            init_module(module, provisions)
-        except:
-            _log.err('Loading failed, unloading dependencies...')
-            # Unload all loaded dependencies.
-            for dependency in reversed(loaded):
-                _log.trace('Unloading module: {} (dependency)', dependency.__name__)
-                exit_module(dependency)
+    _log.debug('Loading module: {} (main)', module.__name__)
+    try:
+        init_module(module, provisions)
+    except:
+        _log.err('Loading failed, unloading dependencies...')
+        # Unload all loaded dependencies.
+        for dependency in reversed(loaded):
+            _log.trace('Unloading module: {} (dependency)', dependency.__name__)
+            exit_module(dependency)
 
-            raise
+        raise
 
 def init_module(module, provisions):
     if module not in _loaded:
