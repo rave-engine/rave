@@ -26,6 +26,8 @@ class Soundable(Renderable):
 
 class Layer(Drawable):
     """ A layer of drawables within a window. """
+    __slots__ = ('name', 'children')
+
     def __init__(self, name):
         self.name = name
         self.children = []

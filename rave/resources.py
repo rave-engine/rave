@@ -33,6 +33,8 @@ class LoadFailure(Exception):
 
 class ImageData:
     """ Abstract class to hold decoded image data. """
+    __slots__ = ('width', 'height', 'pixel_format')
+
     def __init__(self, width, height, pixel_format=rave.rendering.PixelFormat.FORMAT_RGBA8888):
         self.width = width
         self.height = height
@@ -43,6 +45,8 @@ class ImageData:
 
 class AudioData:
     """ Abstract class to hold decoded audio data. """
+    __slots__ = ('channels', 'sample_rate', 'bit_depth', 'streaming')
+
     def __init__(self, channels=2, sample_rate=44100, bit_depth=16, streaming=False):
         self.channels = channels
         self.sample_rate = sample_rate
