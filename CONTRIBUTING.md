@@ -40,11 +40,11 @@ Use the imperative form (`Add filesystem module tests.`, `Fix bug #1732.`, etc.)
 Seperate the distinct changes you make into seperate ('atomic') commits. Don't push a single commit that adds multiple features, or adds a feature and fixes a bug elsewhere, et cetera.
 
 Prefix the first line in your commit message with the subsystem the commit applies to. Valid subsystems are:
-  * rave: the engine core.
+  * core: the engine core.
   * modules/*module*: an engine module.
   * common: common asset files.
   * build: the build and test system.
   * tests: unit or integration tests.
   * misc: anything that doesn't fit into the above categories.
 
-An example of a proper full commit message would be "rave: Fix crash in rave.events.emit() if registered event callback is not callable.".
+An example of a proper full commit message would be "core: Fix crash in rave.events.emit() if registered event callback is not callable.".
