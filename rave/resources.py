@@ -17,7 +17,7 @@ import rave.backends
 
 ## API.
 
-class LoadFailure(rave.common.raveException):
+class LoadFailure(rave.common.raveError):
     """ A failure that occurred while trying to load a resource. """
     def __init__(self, path, errors):
         self.path = path
