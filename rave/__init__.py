@@ -9,12 +9,16 @@ from . import common
 from . import log
 from . import events
 from . import execution
+
 from . import filesystem
 from . import loader
 from . import modularity
+
 from . import backends
 from . import rendering
+from . import input
 from . import resources
+
 from . import bootstrap
 from . import game
 from . import main
