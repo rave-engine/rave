@@ -3,12 +3,15 @@ Common base elements.
 """
 import warnings
 import types
+import enum
 from functools import wraps
+
 
 # rave is stylized, yo.
 class raveError(Exception):
     """ Base class for any exception that happens in the rave engine. """
     pass
+
 
 # Deprecated stuff.
 def deprecated(replacement=None):
@@ -44,3 +47,17 @@ def deprecated(replacement=None):
             return f
 
     return inner
+
+
+class IncrementingEnum(enum.Enum):
+    """
+    Enum that automatically assigns an incrementing integer value to its members,
+    from https://docs.python.org/3/library/enum.html#autonumber.
+    """
+
+    def __new__(cls):
+        value = len(cls.__members__) + 1
+        obj = object.__new__(cls)
+        obj._value_ = value
+
+        return obj
