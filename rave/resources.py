@@ -9,6 +9,7 @@ Loaders registered should take the following API:
 """
 import os
 import re
+import rave.common
 import rave.filesystem
 import rave.rendering
 import rave.backends
@@ -16,7 +17,7 @@ import rave.backends
 
 ## API.
 
-class LoadFailure(Exception):
+class LoadFailure(rave.common.raveException):
     """ A failure that occurred while trying to load a resource. """
     def __init__(self, path, errors):
         self.path = path
