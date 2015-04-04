@@ -6,10 +6,10 @@ import rave.rendering
 
 
 def init_game(game):
+    rave.modularity.load_all()
     rave.events.emit('game.init', game)
 
     with game.env:
-        rave.modularity.load_all()
         rave.backends.select_all()
 
 
