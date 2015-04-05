@@ -14,11 +14,23 @@ class EventBus:
     def __init__(self):
         self.handlers = {}
 
-    def hook(self, event, handler):
+    def hook(self, event, handler=None):
+        if not handler:
+            def do_hook(f):
+                self.hook(event, f)
+                return f
+            return do_hook
+
         self.handlers.setdefault(event, [])
         self.handlers[event].append(handler)
 
-    def hook_first(self, event, handler):
+    def hook_first(self, event, handler=None):
+        if not handler:
+            def do_hook(f):
+                self.hook_first(event, f)
+                return f
+            return do_hook
+
         self.handlers.setdefault(event, [])
         self.handlers[event].insert(0, handler)
 
@@ -53,16 +65,16 @@ def current():
     return game.events
 
 def emit(event, *args, **kwargs):
-    current().emit(event, *args, **kwargs)
+    return current().emit(event, *args, **kwargs)
 
-def hook(event, handler):
-    current().hook(event, handler)
+def hook(event, handler=None):
+    return current().hook(event, handler)
 
-def hook_first(event, handler):
-    current().hook_first(event, handler)
+def hook_first(event, handler=None):
+    return current().hook_first(event, handler)
 
 def unhook(event, handler):
-    current().unhook(event, handler)
+    return current().unhook(event, handler)
 
 
 ## Internals.
