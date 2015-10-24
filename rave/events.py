@@ -3,12 +3,25 @@ rave event bus.
 """
 import rave.log
 
+_log = rave.log.get(__name__)
 
-## API.
 
 class StopProcessing(BaseException):
-    """ Exception raised to indicate this event should onot be processed further. """
+    """ Exception raised to indicate this event should not be processed further. """
     pass
+
+class HookContext:
+    def __init__(self, bus, event, handler):
+        self.bus = bus
+        self.event = event
+        self.handler = handler
+
+    def __enter__(self):
+        self.bus.hook(self.event, self.handler)
+        return self
+
+    def __exit__(self, exctype, excval, exctb):
+        self.bus.unhook(self.event, self.handler)
 
 class EventBus:
     def __init__(self):
@@ -36,6 +49,9 @@ class EventBus:
 
     def unhook(self, event, handler):
         self.handlers[event].remove(handler)
+
+    def hooked(self, event, handler):
+        return HookContext(self, event, handler)
 
     def emit(self, event, *args, **kwargs):
         handlers = self.handlers.get(event)
@@ -74,8 +90,3 @@ def hook_first(event, handler=None):
 
 def unhook(event, handler):
     return current().unhook(event, handler)
-
-
-## Internals.
-
-_log = rave.log.get(__name__)
