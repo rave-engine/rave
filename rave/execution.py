@@ -7,23 +7,20 @@ import types
 import rave.log
 
 
-## Internals.
-
 _log = rave.log.get(__name__)
 _lock = threading.Lock()
+_ident_funcs = [ lambda: threading.current_thread().ident ]
 _current_envs = {}
 
-def _identifier():
+
+def identifier():
     """ Get unique identifier for all possible parallel mechanisms. """
-    return threading.current_thread().ident
-
-
-## API.
+    return tuple(f() for f in _ident_funcs)
 
 def current():
     """ Get current execution environment object for whatever parallel mechanism is used, or None if no environment is active. """
     with _lock:
-        ident = _identifier()
+        ident = identifier()
 
         envs = _current_envs.get(ident)
         if envs:
@@ -33,7 +30,7 @@ def current():
 def push(env):
     """ Set current execution environment for whatever parallel mechanism is used. """
     with _lock:
-        ident = _identifier()
+        ident = identifier()
 
         _current_envs.setdefault(ident, [])
         if _current_envs[ident]:
@@ -46,7 +43,7 @@ def push(env):
 def pop():
     """ Clear the current execution environment for whatever parallel mechanism is used. """
     with _lock:
-        ident = _identifier()
+        ident = identifier()
 
         envs = _current_envs.get(ident)
         if envs:
@@ -62,10 +59,7 @@ def pop():
         raise ValueError('No environment to clear.')
 
 
-## Execution environment.
-
 class ExecutionEnvironment:
-
     def __init__(self, game=None):
         self.game = game
         self.apis = {}
