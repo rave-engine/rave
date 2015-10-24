@@ -1,3 +1,4 @@
+import sdl2
 import rave.log
 import rave.events
 from ..common import events_for, handle_events as handle_system_events
