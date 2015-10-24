@@ -93,6 +93,7 @@ def select(category):
             # Mark as selected.
             if category in SINGLE_BACKEND_CATEGORIES:
                 _selected[category] = backend
+                globals()[CATEGORY_NAMES[category]] = backend
                 break
             else:
                 _selected.setdefault(category, set())
@@ -151,3 +152,9 @@ def _load_backend(category, backend):
         else:
             return True
     return True
+
+
+## Initialization.
+
+for category in SINGLE_BACKEND_CATEGORIES:
+    globals()[CATEGORY_NAMES[category]] = None
