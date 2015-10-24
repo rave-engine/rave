@@ -38,20 +38,19 @@ def bootstrap_game(engine, base):
     import rave.modules.filesystemsource as fss
     name = path.basename(base.rstrip('/\\'))
     game = rave.game.Game(name, base)
-    fss = rave.modules.filesystemsource
 
-    # Clear filesystem entirely and overlay engine mount.
     with game.env:
+        # Clear filesystem entirely and overlay engine mount.
         game.fs.clear()
         game.fs.mount('/', rave.filesystem.FileSystemProvider(engine.fs))
 
         # Determine file system locations.
         if game.base:
-            game_dir = path.join(game.base, 'game')
-            game_module_dir = path.join(game.base, 'modules')
+            gamepath = path.join(game.base, 'game')
+            modpath  = path.join(game.base, 'modules')
 
-            # Bootstrap game module mount.
-            game.fs.mount(rave.filesystem.GAME_MOUNT, fss.FileSystemSource(game_dir))
-            game.fs.mount(rave.filesystem.MODULE_MOUNT, fss.FileSystemSource(game_module_dir))
+            # Bootstrap game mounts.
+            game.fs.mount(rave.filesystem.GAME_MOUNT, fss.FileSystemSource(gamepath))
+            game.fs.mount(rave.filesystem.MODULE_MOUNT, fss.FileSystemSource(modpath))
 
     return game

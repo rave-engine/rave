@@ -72,15 +72,14 @@ def bootstrap_engine(bootstrapper=None):
     _log('Engine bootstrapped.')
     return engine
 
-
 def bootstrap_game(engine, bootstrapper=None, base=None):
     """ Bootstrap the game with `base` as game base. """
     if not bootstrapper:
         bootstrapper = _find_game_bootstrapper(base)
-
     _log('Selected game bootstrapper: {name}', name=bootstrapper)
-    bootstrapper = importlib.import_module('rave.bootstrap.' + bootstrapper)
 
+    _log.debug('Bootstrapping game from {path}...', path=base)
+    bootstrapper = importlib.import_module('rave.bootstrap.' + bootstrapper)
     game = bootstrapper.bootstrap_game(engine, base)
     with game.env:
         _load_all_modules()

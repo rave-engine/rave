@@ -35,9 +35,9 @@ class LogFilter(logging.Filter):
 
         current = game.current()
         if current:
-            record.game = current.name
+            record.source = current.name
         else:
-            record.game = '<init>'
+            record.source = '<engine>'
 
         if record.name.startswith('rave.modules.'):
             record.name = 'module:' + record.name.replace('rave.modules.', '', 1).split('.', 1)[0]
@@ -66,7 +66,7 @@ class Logger:
     Thin wrapper around Python's logging module in order to make it more bearable.
     Formats messages automatically according to advanced string formatting, handles logger name and logfile changes painlessly.
     """
-    FORMAT = '{asctime} {game} [{name}] {levelname}: {message}'
+    FORMAT = '{asctime} {source} [{name}] {levelname}: {message}'
     DATE_FORMAT = None
     FILE = None
     LEVEL = INFO | WARNING | ERROR | FATAL | EXCEPTION
