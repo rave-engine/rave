@@ -44,7 +44,7 @@ class Game:
         running = True
 
         # Stop the event loop when a stop event was caught.
-        def stop(event, b=None):
+        def stop(event):
             nonlocal running
             running = False
 
@@ -57,6 +57,7 @@ class Game:
                     pass
 
                 rave.backends.handle_events(self)
+                self.events.emit('game.tick', self)
                 if self.mixer:
                     self.mixer.render(None)
                 if self.window:
