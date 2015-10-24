@@ -116,7 +116,10 @@ class ResourceManager:
 
 def current():
     import rave.game
-    return rave.game.current().resources
+    game = rave.game.current()
+    if not game:
+        return None
+    return game.resources
 
 def load(path):
     return current().load(path)

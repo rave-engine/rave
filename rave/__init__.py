@@ -20,5 +20,5 @@ from . import input
 from . import resources
 
 from . import bootstrap
+from . import engine
 from . import game
-from . import main

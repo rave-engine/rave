@@ -5,24 +5,15 @@ This contains the code that ties everything together to run a single game.
 """
 import threading
 import rave.log
+import rave.events
 import rave.filesystem
 import rave.execution
-import rave.events
+import rave.backends
+import rave.input
 import rave.resources
 
-# The engine game!
-engine = None
+_log = rave.log.get(__name__)
 
-def current():
-    """ Get currently running game. This is a convenience wrapper for rave.execution.current(). """
-    env = rave.execution.current()
-    if not env or not env.game:
-        return None
-
-    return env.game
-
-
-## A game object.
 
 class Game:
     """ A game session in rave. """
@@ -34,17 +25,47 @@ class Game:
         self.fs = rave.filesystem.FileSystem()
         self.events = rave.events.EventBus()
         self.env = rave.execution.ExecutionEnvironment(self)
+        self.dispatcher = rave.input.Dispatcher(self.events)
         self.resources = rave.resources.ResourceManager()
         self.window = None
         self.mixer = None
 
+    def init(self):
+        """ Initialize a game. """
         self.events.hook('game.suspend', self.suspend)
         self.events.hook('game.resume', self.resume)
+        self.dispatcher.register_hooks()
 
-        # Announce game creation over parent event bus.
-        parent = current()
-        if parent:
-            parent.events.emit('game.created', self)
+        with self.env:
+            self.events.emit('game.init', self)
+
+    def run(self):
+        """ Run the game. """
+        running = True
+
+        # Stop the event loop when a stop event was caught.
+        def stop(event, b=None):
+            nonlocal running
+            running = False
+
+        with self.events.hooked('game.stop', stop), self.env:
+            self.events.emit('game.start', self)
+            # Typical handle events -> update game state -> render loop.
+            while running:
+                with self.active_lock:
+                    # Suspend main loop while lock is active: useful for when the OS requests an application suspend.
+                    pass
+
+                rave.backends.handle_events(self)
+                if self.mixer:
+                    self.mixer.render(None)
+                if self.window:
+                    self.window.render(None)
+
+    def shutdown(self):
+        """ Shut game down. """
+        with self.env:
+            self.fs.clear()
 
     def suspend(self, event):
         _log('Game suspending, acquiring main loop lock.')
@@ -58,6 +79,12 @@ class Game:
         return '<{}: {}>'.format(self.__class__.__qualname__, self.name)
 
 
-## Internals.
+## Stateful API.
 
-_log = rave.log.get(__name__)
+def current():
+    """ Get currently running game. This is a convenience wrapper for rave.execution.current(). """
+    env = rave.execution.current()
+    if not env or not env.game:
+        return None
+
+    return env.game

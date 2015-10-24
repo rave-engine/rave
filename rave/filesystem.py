@@ -8,6 +8,11 @@ import collections
 import rave.common
 import rave.log
 
+# Various standard mount points.
+ENGINE_MOUNT = '/.rave'
+MODULE_MOUNT = '/.modules'
+GAME_MOUNT = '/'
+COMMON_MOUNT = '/.common'
 
 ## Errors.
 
@@ -539,10 +544,10 @@ class FileSystemProvider:
 ## Stateful API.
 
 def current():
-    import rave.game
+    import rave.game, rave.engine
     game = rave.game.current()
     if not game:
-        return None
+        return rave.engine.engine.fs
     return game.fs
 
 def list(subdir=None):

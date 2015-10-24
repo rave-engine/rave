@@ -57,11 +57,10 @@ class EventBus:
 
 def current():
     """ Get current event bus. """
-    # Prevent circular imports.
-    import rave.game
+    import rave.game, rave.engine
     game = rave.game.current()
     if not game:
-        return None
+        return rave.engine.engine.events
     return game.events
 
 def emit(event, *args, **kwargs):

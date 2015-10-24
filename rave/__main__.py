@@ -17,15 +17,12 @@ def parse_arguments():
 def main():
     args = parse_arguments()
     engine = rave.bootstrap.bootstrap_engine(args.bootstrapper)
+    engine.init()
 
     if args.game:
-        with engine.env:
-            game = rave.bootstrap.bootstrap_game(args.game_bootstrapper, args.game)
-            rave.main.init_game(game)
-            rave.main.run_game(game)
-        rave.bootstrap.shutdown_game(game)
+        game = rave.bootstrap.bootstrap_game(engine, args.game_bootstrapper, args.game)
+        engine.run_game(game)
 
-    rave.bootstrap.shutdown()
+    engine.shutdown()
 
 main()
-

@@ -6,9 +6,8 @@ This will load the FileSystemSource module from the file system and load the mod
 import os.path as path
 import importlib
 import rave.bootstrap
+import rave.filesystem
 import rave.game
-import rave.modularity
-
 
 MODULES = [ 'filesystemsource' ]
 ENGINE_BASE_PATH = path.dirname(path.dirname(path.dirname(__file__)))
@@ -18,46 +17,41 @@ COMMON_PATH = path.join(ENGINE_BASE_PATH, 'common')
 GAME_DEFAULT_PATH = path.dirname(ENGINE_BASE_PATH)
 
 
-def bootstrap_modules():
-    # Make sure the engine module package is imported and set the temporay bootstrap import path.
-    module_package = importlib.import_module(rave.bootstrap.MODULE_PACKAGE)
-    module_package.__path__ = [ MODULE_PATH ]
 
-    # Bootstrap modules.
-    for module in MODULES:
-        name = rave.bootstrap.MODULE_PACKAGE + '.' + module
-        mod = importlib.import_module(name)
-        rave.modularity.register_module(mod)
-        rave.modularity.load_module(mod.__name__)
-
-    # Reset import path.
-    module_package.__path__ = []
-
-def bootstrap_filesystem(filesystem):
-    """ Bootstrap engine mounts on the file system. """
+def bootstrap_engine(engine):
+    # Bootstrap file system source.
+    import rave.modules
+    rave.modules.__path__ = [ MODULE_PATH ]
     import rave.modules.filesystemsource as fss
 
-    # Clear filesystem entirely.
-    filesystem.clear()
-
+    # Clear filesystem.
+    engine.fs.clear()
     # Bootstrap engine mounts.
-    filesystem.mount(rave.bootstrap.ENGINE_MOUNT, fss.FileSystemSource(filesystem, ENGINE_PATH))
-    filesystem.mount(rave.bootstrap.MODULE_MOUNT, fss.FileSystemSource(filesystem, MODULE_PATH))
-    filesystem.mount(rave.bootstrap.COMMON_MOUNT, fss.FileSystemSource(filesystem, COMMON_PATH))
+    engine.fs.mount(rave.filesystem.ENGINE_MOUNT, fss.FileSystemSource(ENGINE_PATH))
+    engine.fs.mount(rave.filesystem.MODULE_MOUNT, fss.FileSystemSource(MODULE_PATH))
+    engine.fs.mount(rave.filesystem.COMMON_MOUNT, fss.FileSystemSource(COMMON_PATH))
 
-def bootstrap_game(base):
-    name = path.basename(base.rstrip('/\\'))
-    return rave.game.Game(name, base)
+    # Remove initial bootstrap.
+    rave.modules.__path__.remove(MODULE_PATH)
 
-def bootstrap_game_filesystem(game):
-    """ Bootstrap the game. """
+def bootstrap_game(engine, base):
     import rave.modules.filesystemsource as fss
+    name = path.basename(base.rstrip('/\\'))
+    game = rave.game.Game(name, base)
+    fss = rave.modules.filesystemsource
 
-    # Determine file system locations.
-    if game.base:
-        game_dir = path.join(game.base, 'game')
-        game_module_dir = path.join(game.base, 'modules')
+    # Clear filesystem entirely and overlay engine mount.
+    with game.env:
+        game.fs.clear()
+        game.fs.mount('/', rave.filesystem.FileSystemProvider(engine.fs))
 
-        # Bootstrap game module mount.
-        game.fs.mount(rave.bootstrap.GAME_MOUNT, fss.FileSystemSource(game.fs, game_dir))
-        game.fs.mount(rave.bootstrap.MODULE_MOUNT, fss.FileSystemSource(game.fs, game_module_dir))
+        # Determine file system locations.
+        if game.base:
+            game_dir = path.join(game.base, 'game')
+            game_module_dir = path.join(game.base, 'modules')
+
+            # Bootstrap game module mount.
+            game.fs.mount(rave.filesystem.GAME_MOUNT, fss.FileSystemSource(game_dir))
+            game.fs.mount(rave.filesystem.MODULE_MOUNT, fss.FileSystemSource(game_module_dir))
+
+    return game

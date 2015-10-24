@@ -73,8 +73,7 @@ def _ensure_opened(f):
 class FileSystemSource:
     """ A provider that sources from an actual underlying file system. """
 
-    def __init__(self, filesystem, basepath):
-        self.filesystem = filesystem
+    def __init__(self, basepath):
         self.basepath = path.abspath(basepath)
         self._file_list = None
 
@@ -90,13 +89,13 @@ class FileSystemSource:
 
     def _to_native_path(self, filename):
         """ Translate virtual file system path to native file system path. """
-        filename = filename.lstrip(self.filesystem.PATH_SEPARATOR).replace(self.filesystem.PATH_SEPARATOR, os.sep)
+        filename = filename.lstrip(fs.PATH_SEPARATOR).replace(fs.PATH_SEPARATOR, os.sep)
         return path.join(self.basepath, filename)
 
     def _from_native_path(self, filename):
         """ Translate native file system path to virtual file system path. """
         filename = path.relpath(filename, self.basepath)
-        return filename.replace(os.sep, self.filesystem.PATH_SEPARATOR)
+        return filename.replace(os.sep, fs.PATH_SEPARATOR)
 
     @_translate_errors
     def _build_file_list(self):
@@ -133,14 +132,13 @@ class FileSystemSource:
             raise fs.NotAFile(filename)
 
         native_path = self._to_native_path(filename)
-        return FileSystemFile(self.filesystem, native_path, *args, **kwargs)
+        return FileSystemFile(native_path, *args, **kwargs)
 
 
 class FileSystemFile(fs.File):
     """ A file on the actual file system. """
 
-    def __init__(self, filesystem, filename, *args, **kwargs):
-        self.filesystem = filesystem
+    def __init__(self, filename, *args, **kwargs):
         self.filename = filename
         self._handle = None
         self._readable = None

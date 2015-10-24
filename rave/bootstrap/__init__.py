@@ -17,25 +17,15 @@ Bootstrappers should be placed in rave/bootstrappers/ and should implement the f
 import importlib
 
 from rave import __version__
+import rave.log
 import rave.loader
 import rave.filesystem
 import rave.modularity
-import rave.log
+import rave.engine
 import rave.game
 
-
-ENGINE_MOUNT = '/.rave'
-ENGINE_PACKAGE = 'rave'
-MODULE_MOUNT = '/.modules'
-MODULE_PACKAGE = 'rave.modules'
-GAME_MOUNT = '/'
-GAME_PACKAGE = 'rave.game'
-COMMON_MOUNT = '/.common'
-
-
-## Internal.
-
 _log = rave.log.get(__name__)
+
 
 def _find_engine_bootstrapper():
     """ Determine the bootstrapper to use for bootstrapping the engine parts. """
@@ -47,78 +37,53 @@ def _find_game_bootstrapper(base):
     # We still only have one bootstrapper.
     return 'filesystem'
 
+def _load_all_modules():
+    """ Import all modules to build dependency tree. """
+    for mod in rave.filesystem.listdir(rave.filesystem.MODULE_MOUNT):
+        path = rave.filesystem.join(rave.filesystem.MODULE_MOUNT, mod)
+        if not mod.startswith('__') and (mod.endswith('.py') or rave.filesystem.isdir(path)):
+            try:
+                __import__(rave.modularity.MODULE_PACKAGE + '.' + mod.replace('.py', ''))
+            except Exception as e:
+                _log.exception(e, "Could not import module: {}", mod)
 
-## API.
+
 
 def bootstrap_engine(bootstrapper=None):
     """ Bootstrap the engine. """
     _log('This is rave v{ver}.', ver=__version__)
+    engine = rave.engine.Engine()
+    rave.engine.engine = engine
 
-    rave.game.engine = rave.game.Game('<engine>')
+    _log.debug('Bootstrapping loader...')
+    rave.loader.install_hook(rave.modularity.ENGINE_PACKAGE, [ rave.filesystem.ENGINE_MOUNT ])
+    rave.loader.install_hook(rave.modularity.MODULE_PACKAGE, [ rave.filesystem.MODULE_MOUNT ], loader=rave.modularity.ModuleLoader)
+    rave.loader.install_hook(rave.modularity.GAME_PACKAGE, [ rave.filesystem.GAME_MOUNT ])
 
-    with rave.game.engine.env:
-        _log.debug('Installing hooks...')
-        rave.loader.install_hook(ENGINE_PACKAGE, [ ENGINE_MOUNT ])
-        rave.loader.install_hook(MODULE_PACKAGE, [ MODULE_MOUNT ], cls=rave.modularity.ModuleLoader)
-        rave.loader.install_hook(GAME_PACKAGE, [ GAME_MOUNT ])
+    if not bootstrapper:
+        bootstrapper = _find_engine_bootstrapper()
+    _log('Selected engine bootstrapper: {name}', name=bootstrapper)
 
-        if not bootstrapper:
-            bootstrapper = _find_engine_bootstrapper()
-
-        _log('Selected engine bootstrapper: {name}', name=bootstrapper)
-        bootstrapper = importlib.import_module('rave.bootstrap.' + bootstrapper)
-
-        # We bootstrap vital modules first that are likely needed to bootstrap the file system.
-        _log.debug('Bootstrapping engine modules...')
-        bootstrapper.bootstrap_modules()
-
-        # Now bootstrap the engine file system.
-        _log.debug('Bootstrapping engine file system...')
-        bootstrapper.bootstrap_filesystem(rave.game.engine.fs)
+    _log.debug('Bootstrapping engine...')
+    bootstrapper = importlib.import_module('rave.bootstrap.' + bootstrapper)
+    bootstrapper.bootstrap_engine(engine)
+    _load_all_modules()
 
     _log('Engine bootstrapped.')
-    return rave.game.engine
+    return engine
 
 
-def bootstrap_game(bootstrapper=None, base=None):
+def bootstrap_game(engine, bootstrapper=None, base=None):
     """ Bootstrap the game with `base` as game base. """
     if not bootstrapper:
         bootstrapper = _find_game_bootstrapper(base)
 
-    with rave.game.engine.env:
-        _log('Selected game bootstrapper: {name}', name=bootstrapper)
-        bootstrapper = importlib.import_module('rave.bootstrap.' + bootstrapper)
+    _log('Selected game bootstrapper: {name}', name=bootstrapper)
+    bootstrapper = importlib.import_module('rave.bootstrap.' + bootstrapper)
 
-        game = bootstrapper.bootstrap_game(base)
-        with game.env:
-            _log.debug('Bootstrapping game file system...')
-            game.fs.mount('/', rave.filesystem.FileSystemProvider(rave.game.engine.fs))
-            bootstrapper.bootstrap_game_filesystem(game)
-
-            # Import all modules to build dependency tree.
-            for mod in game.fs.listdir(MODULE_MOUNT):
-                if not mod.startswith('__') and (mod.endswith('.py') or game.fs.isdir(game.fs.join(MODULE_MOUNT, mod))):
-                    try:
-                        __import__(MODULE_PACKAGE + '.' + mod.replace('.py', ''))
-                    except Exception as e:
-                        _log.exception(e, "Could not import module: {}", mod)
-
-        _log('Game bootstrapped: {}', game.name)
-
-    return game
-
-
-def shutdown_game(game):
-    """ Finalize and shut down game. """
-    _log('Shutting down game: {}...', game.name)
+    game = bootstrapper.bootstrap_game(engine, base)
     with game.env:
-        game.fs.clear()
+        _load_all_modules()
 
-def shutdown():
-    """ Finalize and shutdown engine. """
-    _log('Shutting down engine...')
-    with rave.game.engine.env:
-        _log.debug('Removing hooks...')
-        rave.loader.remove_hooks()
-
-        rave.game.engine.fs.clear()
+    _log('Game bootstrapped: {}', game.name)
+    return game

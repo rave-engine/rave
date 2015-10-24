@@ -2,15 +2,17 @@ import heapq
 import rave.log
 import rave.loader
 
+_log = rave.log.get(__name__)
 
-## Constants.
 
-PRIORITY_MIN = -100
-PRIORITY_MAX = 100
+PRIORITY_MIN     = -100
+PRIORITY_MAX     = 100
 PRIORITY_NEUTRAL = 0
 
+ENGINE_PACKAGE = 'rave'
+MODULE_PACKAGE = 'rave.modules'
+GAME_PACKAGE   = 'rave.game'
 
-## API.
 
 class ModuleLoader(rave.loader.VFSImporter):
     """
@@ -127,7 +129,6 @@ def exit_module(module):
 
 ## Internals.
 
-_log = rave.log.get(__name__)
 _loading_stack = []
 _requirements = {}
 _provisions = {}
