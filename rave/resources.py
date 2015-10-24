@@ -77,9 +77,9 @@ class ResourceManager:
             raise LoadFailure(path, res)
 
         if isinstance(res, ImageData):
-            return rave.backends.get(rave.backends.BACKEND_VIDEO).create_drawable(res)
+            return rave.backends.video.create_drawable(res)
         if isinstance(res, AudioData):
-            return rave.backends.get(rave.backends.BACKEND_AUDIO).create_soundable(res)
+            return rave.backends.audio.create_soundable(res)
         return res
 
     def try_load(self, path, file, loaders):
