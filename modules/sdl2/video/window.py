@@ -36,6 +36,7 @@ GL_PROFILE_CONSTANTS = { v: k for k, v in GL_PROFILE_NAMES.items() }
 class Window(rave.rendering.Drawable):
     def __init__(self, handle, title, width, height, fullscreen, borders, resizable, vsync):
         self.handle = handle
+        self.id = sdl2.SDL_GetWindowID(self.handle)
         self.gl_context = None
         self.gl_window = None
         self._title = title
@@ -110,7 +111,7 @@ class Window(rave.rendering.Drawable):
     ## Events.
 
     def on_resize(self, event, window, w, h):
-        if window and window != sdl2.SDL_GetWindowID(self.handle):
+        if window and window != self.id:
             return
         self._size = (w, h)
 
@@ -122,7 +123,7 @@ class Window(rave.rendering.Drawable):
         self._render_size = (w, h)
 
     def on_close(self, event, window):
-        if window and window != sdl2.SDL_GetWindowID(self.handle):
+        if window and window != self.id:
             return
         self.close()
         rave.events.emit('game.stop')
