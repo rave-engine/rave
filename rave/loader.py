@@ -11,7 +11,6 @@ import importlib.util
 
 import rave.log
 import rave.filesystem
-import rave.game
 
 
 ## Internals.
@@ -87,28 +86,28 @@ class VFSImporter(importlib.abc.MetaPathFinder, importlib.abc.SourceLoader):
             candidates = []
         else:
             # Do we have a file system to load from?
-            game = rave.game.current()
-            if not game:
+            fs = rave.filesystem.current()
+            if not fs:
                 return None
 
             # Make relative path and find module.
-            rel_path = name.replace(self.package + '.', '').replace('.', game.fs.PATH_SEPARATOR)
+            rel_path = name.replace(self.package + '.', '').replace('.', rave.filesystem.PATH_SEPARATOR)
 
             for search_path in self.search_paths:
-                base_name = game.fs.join(search_path, rel_path)
+                base_name = fs.join(search_path, rel_path)
                 extensions = importlib.machinery.SOURCE_SUFFIXES + importlib.machinery.BYTECODE_SUFFIXES
                 available = []
 
                 # Single-file modules.
                 candidates = [ base_name + ext for ext in extensions ]
-                available.extend(path for path in candidates if game.fs.isfile(path))
+                available.extend(path for path in candidates if fs.isfile(path))
                 # Packages.
-                candidates = [ game.fs.join(base_name, '__init__' + ext) for ext in extensions ]
-                available.extend(path for path in candidates if game.fs.isfile(path))
+                candidates = [ fs.join(base_name, '__init__' + ext) for ext in extensions ]
+                available.extend(path for path in candidates if fs.isfile(path))
 
                 # Find first available candidate.
                 for path in available:
-                    self._register_module(game, name, path)
+                    self._register_module(fs, name, path)
 
                     loader = self
                     origin = path
@@ -123,42 +122,38 @@ class VFSImporter(importlib.abc.MetaPathFinder, importlib.abc.SourceLoader):
             _log.debug('Loading {pkg} from {path}. (candidates: {available})', pkg=name, path=origin, available=candidates)
         return importlib.machinery.ModuleSpec(name, loader, origin=origin, is_package=package)
 
-    def _register_module(self, game, name, path):
+    def _register_module(self, fs, name, path):
         """ Register module as loadable through this loader. """
-        self._modules.setdefault(game, {})
-        self._modules[game][name] = path
+        self._modules.setdefault(fs, {})
+        self._modules[fs][name] = path
 
     def get_filename(self, name):
-        game = rave.game.current()
-        if not game or game not in self._modules or name not in self._modules[game]:
+        fs = rave.filesystem.current()
+        if fs not in self._modules or name not in self._modules[fs]:
             raise ImportError('Unknown module for this loader.')
-        return self._modules[game][name]
+        return self._modules[fs][name]
 
     def get_data(self, path):
-        game = rave.game.current()
-        if not game:
-            raise BrokenPipeError('No game file system to load module from.')
-        with game.fs.open(path, 'rb') as f:
+        fs = rave.filesystem.current()
+        with fs.open(path, 'rb') as f:
             return f.read()
 
     def set_data(self, path, data):
-        game = rave.game.current()
-        if not game:
+        fs = rave.filesystem.current()
+        if not fs:
             # Silence errors.
             return
 
         try:
-            with game.fs.open(path, 'wb') as f:
+            with fs.open(path, 'wb') as f:
                 f.write(data)
         except rave.filesystem.FileSystemError:
             # Silence errors.
             pass
 
     def path_stats(self, path):
-        game = rave.game.current()
-        if not game:
-            raise BrokenPipeError('No game file system to get module info from.')
-        if not game.fs.isfile(path):
+        fs = rave.filesystem.current()
+        if not fs.isfile(path):
             raise FileNotFoundError(path)
 
         return { 'mtime': 0 }
@@ -166,12 +161,12 @@ class VFSImporter(importlib.abc.MetaPathFinder, importlib.abc.SourceLoader):
 
 ## API.
 
-def install_hook(package, paths, cls=VFSImporter):
+def install_hook(package, paths, loader=VFSImporter):
     """
     Register an import hook for the virtual file system. Returns an identifier that can be passed to `remove_hook`.
     `package` gives the base package this hook should apply to, `paths` the search paths in the VFS the hook should search in.
     """
-    finder = cls(paths, package)
+    finder = loader(paths, package)
     sys.meta_path.insert(0, finder)
     _installed_finders.append(finder)
 
