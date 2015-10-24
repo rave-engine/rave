@@ -1,5 +1,5 @@
 """
-Thin wrapper around Python's (atrocious) logging module.
+Thin wrapper around Python's logging module.
 
 As a module, use `rave.log.get(__name__)` to get the logger for your module.
 
@@ -63,7 +63,7 @@ TRACE = 0x40
 
 class Logger:
     """
-    Thin wrapper around Python's rather atrocious logging module in order to make it more bearable.
+    Thin wrapper around Python's logging module in order to make it more bearable.
     Formats messages automatically according to advanced string formatting, handles logger name and logfile changes painlessly.
     """
     FORMAT = '{asctime} {game} [{name}] {levelname}: {message}'
