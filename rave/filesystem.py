@@ -236,9 +236,7 @@ class FileSystem:
             yield provider, self._local_file(mountpoint, path)
 
     def _local_file(self, root, path):
-        if root == ROOT:
-            return path
-        return path[len(root):]
+        return path[len(root.rstrip(PATH_SEPARATOR)):]
 
 
     ## API.
@@ -278,7 +276,7 @@ class FileSystem:
         if self._file_cache is None:
             self._build_cache()
 
-        if subdir is None:
+        if not subdir:
             subdir = ROOT
         else:
             subdir = self.normalize(subdir)
