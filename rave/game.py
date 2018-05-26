@@ -37,6 +37,7 @@ class Game:
         self.dispatcher.register_hooks()
 
         with self.env:
+            self.window = rave.backends.video.create_window('YUNG NAKIGE', 1280, 720)
             self.events.emit('game.init', self)
 
     def run(self):

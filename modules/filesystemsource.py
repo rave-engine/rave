@@ -11,6 +11,8 @@ from functools import wraps
 import rave.filesystem as fs
 
 
+# TODO: Translate errors properly.
+
 
 ## Internal module stuff.
 

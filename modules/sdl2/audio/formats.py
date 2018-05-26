@@ -1,18 +1,5 @@
-"""
-Support for decoding audio formats using SDL2_mixer.
-"""
-import sdl2
-import sdl2.ext
-import sdl2.sdlmixer as sdl2mixer
-
-import rave.log
-import rave.events
 import rave.resources
-
-from .common import fs_to_rwops
-
-
-## Constants.
+import sdl2.sdlmixer as sdl2mixer
 
 FORMAT_NAMES = {
     sdl2mixer.MIX_INIT_FLAC: 'FLAC',
@@ -32,27 +19,13 @@ FORMAT_PATTERNS = {
     sdl2mixer.MIX_INIT_FLUIDSYNTH: '\.midi?$'
 }
 
-
-## Module API.
-
-def load():
-    global _formats
-    _formats = sdl2mixer.Mix_Init(sum(FORMAT_NAMES))
-    rave.events.hook('engine.new_game', new_game)
-
-def unload():
-    sdl2mixer.Mix_Quit()
-
-
-## Module stuff.
-
-def new_game(event, game):
+def register_loaders(manager):
     for fmt, pattern in FORMAT_PATTERNS.items():
-        if _formats & fmt:
-            game.resources.register_loader(AudioLoader, pattern)
-            _log.debug('Loaded support for {fmt} audio.', fmt=FORMAT_NAMES[fmt])
-        else:
-            _log.warn('Failed to load support for {fmt} audio.', fmt=FORMAT_NAMES[fmt])
+            if _formats & fmt:
+                manager.resources.register_loader(AudioLoader, pattern)
+                _log.debug('Loaded support for {fmt} audio.', fmt=FORMAT_NAMES[fmt])
+            else:
+                _log.warn('Failed to load support for {fmt} audio.', fmt=FORMAT_NAMES[fmt])
 
 
 class AudioData(rave.resources.AudioData):
@@ -75,9 +48,3 @@ class AudioLoader:
             raise sdl2.ext.SDLError()
 
         # or some shit.
-
-
-## Internals.
-
-_log = rave.log.get(__name__)
-_formats = 0

@@ -1,2 +1,2 @@
-from . import audio, video, input, image, music
+from . import audio, video, input, image
 
